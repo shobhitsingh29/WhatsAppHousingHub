@@ -26,10 +26,7 @@ export class WhatsAppIntegration {
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
-    if (!this.phoneNumberId) {
-      throw new Error("WHATSAPP_PHONE_NUMBER_ID environment variable is required");
-    }
+    this.phoneNumberId = "544501202086565"; // Using the provided phone number ID
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
@@ -40,9 +37,12 @@ export class WhatsAppIntegration {
       ...options.headers,
     };
 
+    console.log(`Making WhatsApp API request to: ${url}`);
     const response = await fetch(url, { ...options, headers });
+
     if (!response.ok) {
-      console.error(`WhatsApp API error: ${response.status} - ${await response.text()}`);
+      const errorText = await response.text();
+      console.error(`WhatsApp API error: ${response.status} - ${errorText}`);
       throw new WhatsAppError(
         `WhatsApp API request failed: ${response.statusText}`,
         response.status.toString()
@@ -52,18 +52,30 @@ export class WhatsAppIntegration {
     return await response.json();
   }
 
-  // Instead of directly joining groups, we'll use the Cloud API's message receiving capability
   async joinGroup(inviteLink: string): Promise<{ success: boolean; message: string }> {
-    // Store the group info but don't try to join programmatically
-    // as this needs to be done manually through the WhatsApp app
-    return {
-      success: true,
-      message: "Group registered for monitoring. Please join the group manually through WhatsApp.",
-    };
+    try {
+      // Extract the group ID from the invite link
+      const groupId = inviteLink.split('/').pop();
+      console.log(`Attempting to access WhatsApp group with ID: ${groupId}`);
+
+      // Try to fetch group info to verify access
+      await this.makeRequest(`/${this.phoneNumberId}/groups/${groupId}/info`);
+
+      return {
+        success: true,
+        message: "Successfully connected to group",
+      };
+    } catch (error) {
+      console.error("Failed to access WhatsApp group:", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Unknown error occurred",
+      };
+    }
   }
 
   async leaveGroup(groupId: string): Promise<{ success: boolean; message: string }> {
-    // Simply mark the group as inactive in our system
+    // For now, just unregister the group from our monitoring
     return {
       success: true,
       message: "Group unregistered from monitoring",
@@ -72,10 +84,25 @@ export class WhatsAppIntegration {
 
   async fetchMessages(groupId: string, since?: Date): Promise<string[]> {
     try {
-      // Fetch messages from the registered webhook data instead of direct API calls
-      // This is a mock implementation - real messages will come through webhooks
-      console.log(`Group ${groupId}: Would fetch messages since ${since?.toISOString() || 'beginning'}`);
-      return [];
+      console.log(`Attempting to fetch messages from group ${groupId}`);
+
+      // Using the Cloud API to fetch messages
+      const response = await this.makeRequest(
+        `/${this.phoneNumberId}/messages`,
+        {
+          method: "GET",
+          headers: {
+            ...(since && { "After": since.toISOString() })
+          }
+        }
+      );
+
+      console.log('API Response:', JSON.stringify(response, null, 2));
+
+      // Extract and return only text messages
+      return response.messages
+        ?.filter((msg: any) => msg.type === 'text')
+        ?.map((msg: any) => msg.text.body) || [];
     } catch (error) {
       console.error("Failed to fetch WhatsApp messages:", error);
       return [];
