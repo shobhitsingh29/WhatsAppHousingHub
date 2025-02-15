@@ -13,7 +13,10 @@ export type WhatsAppGroup = z.infer<typeof whatsAppGroupSchema>;
 export type InsertWhatsAppGroup = Omit<WhatsAppGroup, "id" | "lastScraped">;
 
 export class WhatsAppError extends Error {
-  constructor(message: string, public code: string) {
+  constructor(
+    message: string,
+    public code: string,
+  ) {
     super(message);
     this.name = "WhatsAppError";
   }
@@ -27,18 +30,24 @@ export class WhatsAppIntegration {
 
   constructor(apiKey: string) {
     if (!apiKey) {
-      throw new Error("WhatsApp API key is required. Please set WHATSAPP_API_KEY in Secrets.");
+      throw new Error(
+        "WhatsApp API key is required. Please set WHATSAPP_API_KEY in Secrets.",
+      );
     }
     this.apiKey = apiKey;
     this.phoneNumberId = process.env.WHATSAPP_PHONE_ID || "544501202086565";
-    this.businessAccountId = process.env.WHATSAPP_BUSINESS_ID || "561557767042419";
-    console.log("WhatsApp integration initialized with phone ID:", this.phoneNumberId);
+    this.businessAccountId =
+      process.env.WHATSAPP_BUSINESS_ID || "561557767042419";
+    console.log(
+      "WhatsApp integration initialized with phone ID:",
+      this.phoneNumberId,
+    );
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = {
-      "Authorization": `Bearer ${this.apiKey}`,
+      Authorization: `Bearer ${this.apiKey}`,
       "Content-Type": "application/json",
       ...options.headers,
     };
@@ -51,14 +60,16 @@ export class WhatsAppIntegration {
       console.error(`WhatsApp API error: ${response.status} - ${errorText}`);
       throw new WhatsAppError(
         `WhatsApp API request failed: ${response.statusText}`,
-        response.status.toString()
+        response.status.toString(),
       );
     }
 
     return await response.json();
   }
 
-  async joinGroup(inviteLink: string): Promise<{ success: boolean; message: string }> {
+  async joinGroup(
+    inviteLink: string,
+  ): Promise<{ success: boolean; message: string }> {
     // Simply store the group information locally without API validation
     // The group should already be joined manually through WhatsApp
     return {
@@ -67,7 +78,9 @@ export class WhatsAppIntegration {
     };
   }
 
-  async leaveGroup(groupId: string): Promise<{ success: boolean; message: string }> {
+  async leaveGroup(
+    groupId: string,
+  ): Promise<{ success: boolean; message: string }> {
     return {
       success: true,
       message: "Group unregistered from monitoring",
@@ -78,7 +91,9 @@ export class WhatsAppIntegration {
     try {
       // Messages will be received through webhooks instead of direct fetching
       // For now, return empty array until webhook data starts flowing
-      console.log(`Group ${groupId}: Messages will be received through webhooks`);
+      console.log(
+        `Group ${groupId}: Messages will be received through webhooks`,
+      );
       return [];
     } catch (error) {
       console.error("Failed to fetch WhatsApp messages:", error);
@@ -88,50 +103,56 @@ export class WhatsAppIntegration {
 
   async getGroupMessages(inviteLink: string): Promise<string[]> {
     try {
-      const groupId = inviteLink.split('/').pop();
-      const response = await this.makeRequest(`/${this.phoneNumberId}/messages?recipient_type=group&id=${groupId}`, {
-        method: 'GET'
-      });
+      const groupId = inviteLink.split("/").pop();
+      const response = await this.makeRequest(
+        `/${this.phoneNumberId}/messages?recipient_type=group&id=${groupId}`,
+        {
+          method: "GET",
+        },
+      );
 
-      console.log('WhatsApp API response:', response);
-      
+      console.log("WhatsApp API response:", response);
+
       if (response.messages) {
         debugger;
         return response.messages
-          .filter((msg: any) => msg.type === 'text')
+          .filter((msg: any) => msg.type === "text")
           .map((msg: any) => msg.text.body);
       }
-      
+
       return [];
     } catch (error) {
-      console.error('Failed to fetch group messages:', error);
+      console.error("Failed to fetch group messages:", error);
       return [];
     }
   }
 
   async sendMessage(inviteLink: string, message: string): Promise<void> {
     try {
-      console.log('Sending message:', { inviteLink, message });
-      const groupId = inviteLink.split('/').pop();
-      
+      console.log("Sending message:", { inviteLink, message });
+      const groupId = inviteLink.split("/").pop();
+
       if (!groupId) {
-        throw new WhatsAppError('Invalid group invite link', 'INVALID_LINK');
+        throw new WhatsAppError("Invalid group invite link", "INVALID_LINK");
       }
 
-      const response = await this.makeRequest(`/${this.phoneNumberId}/messages`, {
-        method: 'POST',
-        body: JSON.stringify({
-          messaging_product: "whatsapp",
-          recipient_type: "group",
-          to: groupId,
-          type: "text",
-          text: { body: message }
-        })
-      });
+      const response = await this.makeRequest(
+        `/${this.phoneNumberId}/messages`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            recipient_type: "group",
+            to: groupId,
+            type: "text",
+            text: { body: message },
+          }),
+        },
+      );
 
-      console.log('WhatsApp API response:', response);
+      console.log("WhatsApp API response:", response);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       throw error;
     }
   }
