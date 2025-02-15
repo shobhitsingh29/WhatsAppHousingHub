@@ -53,10 +53,11 @@ export class WhatsAppIntegration {
     };
 
     // Add default WhatsApp messaging parameters
-    if (options.method === 'POST' && !options.body) {
+    if (options.method === 'POST') {
+      const body = typeof options.body === 'string' ? JSON.parse(options.body) : {};
       options.body = JSON.stringify({
         messaging_product: "whatsapp",
-        ...JSON.parse(options.body as string || '{}')
+        ...body
       });
     }
 
@@ -127,6 +128,8 @@ export class WhatsAppIntegration {
         {
           method: "POST",
           body: JSON.stringify({
+            messaging_product: "whatsapp",
+            recipient_type: "group",
             to: groupId,
             type: "text",
             text: { body: "Checking messages..." }
