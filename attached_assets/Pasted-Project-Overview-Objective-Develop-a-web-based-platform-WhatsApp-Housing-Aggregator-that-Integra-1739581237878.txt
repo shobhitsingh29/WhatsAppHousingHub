@@ -1,0 +1,121 @@
+Project Overview
+Objective:
+Develop a web-based platform—“WhatsApp Housing Aggregator”—that:
+Integrates with WhatsApp: Automatically joins pre-approved WhatsApp groups focused on housing (sublets, apartments, rentals).
+Extracts and Processes Data: Collects and parses messages to identify key information such as property details, prices, locations, and contact information.
+Displays Listings: Presents the processed data in a user-friendly interface, enabling prospective tenants and landlords to search and interact with listings.
+Target Audience:
+Landlords or individuals offering properties for sublet/rental.
+Potential tenants searching for housing options in Germany.
+2. Functional Requirements
+2.1 WhatsApp Integration
+Automated Group Joining:
+The system must support a secure mechanism to join designated WhatsApp groups.
+Ensure proper authentication and compliance with WhatsApp’s policies.
+Message Retrieval:
+Periodically fetch new messages from these groups (e.g., every 5–10 minutes).
+Handle multimedia content (images, links) alongside text.
+2.2 Data Extraction & Processing
+Parsing and Extraction:
+Develop algorithms to extract key fields from messages such as:
+Property type (apartment, room, house, etc.)
+Rental price and currency
+Location (city, neighborhood)
+Contact details (phone numbers, emails)
+Additional details (furnished status, lease duration)
+Data Normalization:
+Standardize the extracted data (e.g., currency format, location names).
+Flag and handle incomplete or ambiguous listings.
+Manual Override:
+Include an admin interface to review, edit, or correct extracted data.
+2.3 Website Display and User Interaction
+Listing Interface:
+Display listings in a clear, responsive grid or list view.
+Each listing should summarize the key details with an option to view more.
+Search & Filtering:
+Enable users to search by keywords.
+Provide filtering options by location, price range, property type, and more.
+User Engagement:
+Optionally, allow users to register/log in to save favorites, contact landlords, or receive notifications.
+Responsive Design:
+Ensure the website works seamlessly on both mobile and desktop devices.
+2.4 Admin & Moderation Tools
+Dashboard:
+Provide an administrative dashboard for monitoring new listings, flagging inappropriate content, and manual data corrections.
+Spam/Irrelevant Content Management:
+Implement tools to detect and filter spam or off-topic messages.
+2.5 Data Security & Compliance
+Privacy & GDPR Compliance:
+Ensure user data and extracted information are handled according to GDPR and local German data protection regulations.
+Secure Data Transmission:
+Use encryption (HTTPS, secure API calls) when transferring data between WhatsApp, backend, and front-end.
+3. Non-Functional Requirements
+Performance:
+Website load times should be optimized (target under 3 seconds on standard broadband).
+Efficient handling of real-time updates without noticeable delays.
+Scalability:
+The system should handle an increasing number of listings and concurrent users.
+Reliability:
+Ensure high uptime and graceful degradation if WhatsApp integration experiences issues.
+Usability:
+User-friendly interface with clear navigation, inspired by platforms like HousingAnywhere and Wunderfalts.
+4. Acceptance Criteria
+4.1 WhatsApp Integration
+The system successfully authenticates and joins at least one designated WhatsApp group.
+New messages are fetched automatically on a defined schedule (e.g., every 10 minutes).
+The integration handles failures (e.g., network errors) with appropriate retries and error logging.
+4.2 Data Extraction & Processing
+Automated parsing correctly extracts key fields (e.g., property type, price, location) from at least 90% of relevant messages.
+The system normalizes data into a consistent format.
+An admin panel exists for manual review and correction of extracted data.
+4.3 Website Display & User Interaction
+Listings are displayed clearly, with pagination or infinite scroll for large datasets.
+Users can search and filter listings by key parameters (location, price, type).
+The website is responsive and performs well across various devices and screen sizes.
+User feedback mechanisms (e.g., reporting issues with listings) are in place.
+4.4 Admin & Moderation Tools
+An admin dashboard is available with functionality to monitor, edit, and flag listings.
+The system effectively identifies and isolates spam or irrelevant messages.
+4.5 Data Security & Compliance
+Data is transmitted securely with encryption.
+All data handling processes meet GDPR requirements and include user consent where necessary.
+5. Development Checkpoints & Milestones
+Phase 1: Planning & Design (Weeks 1-2)
+Requirements Gathering: Finalize the detailed requirements with stakeholders.
+Design Documentation: Produce system architecture and UI/UX wireframes inspired by existing housing platforms.
+Technical Feasibility: Research WhatsApp integration options and compliance considerations.
+Phase 2: Prototype Development (Weeks 3-5)
+WhatsApp Integration Prototype:
+Build a prototype that demonstrates joining a test WhatsApp group and retrieving messages.
+Data Parsing Module:
+Develop an initial version of the data extraction algorithm and test with sample messages.
+Phase 3: Core Development (Weeks 6-10)
+Backend Development:
+Build the complete WhatsApp integration, data normalization, and storage mechanism.
+Frontend Development:
+Develop the basic website interface displaying static listings.
+Admin Dashboard:
+Implement a basic dashboard for data review and management.
+Phase 4: Integration & Testing (Weeks 11-13)
+End-to-End Integration:
+Connect backend data extraction to dynamic front-end display.
+Performance & Security Testing:
+Conduct load testing, security assessments, and GDPR compliance checks.
+User Testing:
+Perform beta testing with real users to gather feedback and iterate.
+Phase 5: Launch & Post-Launch (Weeks 14-16)
+Final Adjustments:
+Address any issues from user feedback and testing.
+Deployment:
+Launch the website on a production environment.
+Monitoring & Support:
+Set up monitoring tools and plan for ongoing support and updates.
+6. Additional Considerations
+Legal and Ethical:
+Verify the legal implications of scraping and processing WhatsApp data. Obtain necessary permissions and ensure transparency with users.
+Fallback Strategies:
+Develop manual data entry and moderation options if automated extraction fails or yields inconsistent results.
+Scalability Planning:
+Architect the system with scalability in mind to support growing user numbers and additional WhatsApp groups in the future.
+Maintenance & Updates:
+Plan for regular system updates and bug fixes, with continuous integration/continuous deployment (CI/CD) practices in place.
