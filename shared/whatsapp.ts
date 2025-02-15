@@ -93,26 +93,25 @@ export class WhatsAppIntegration {
 
   async sendMessage(inviteLink: string, message: string): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}/${this.phoneNumberId}/messages`, {
+      console.log('Sending message:', { inviteLink, message });
+      const groupId = inviteLink.split('/').pop();
+      
+      if (!groupId) {
+        throw new WhatsAppError('Invalid group invite link', 'INVALID_LINK');
+      }
+
+      const response = await this.makeRequest(`/${this.phoneNumberId}/messages`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           messaging_product: "whatsapp",
-          to: inviteLink.split('/').pop(), // Extract group ID from invite link
+          recipient_type: "group",
+          to: groupId,
           type: "text",
           text: { body: message }
         })
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new WhatsAppError(error.message || 'Failed to send message', response.status.toString());
-      }
-      
-      console.log('Message sent successfully');
+      console.log('WhatsApp API response:', response);
     } catch (error) {
       console.error('Error sending message:', error);
       throw error;

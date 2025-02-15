@@ -103,13 +103,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/whatsapp-groups/:id/send", async (req, res) => {
     const { message } = req.body;
+    console.log('Received send message request:', { groupId: req.params.id, message });
+    
     if (!message || typeof message !== "string") {
       return res.status(400).json({ message: "Message is required" });
     }
 
     try {
-      const group = await storage.getWhatsAppGroups();
-      const targetGroup = group.find(g => g.id === Number(req.params.id));
+      const groups = await storage.getWhatsAppGroups();
+      console.log('Found groups:', groups);
+      
+      const targetGroup = groups.find(g => g.id === Number(req.params.id));
+      console.log('Target group:', targetGroup);
       
       if (!targetGroup) {
         return res.status(404).json({ message: "WhatsApp group not found" });
