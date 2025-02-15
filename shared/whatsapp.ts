@@ -26,9 +26,13 @@ export class WhatsAppIntegration {
   private businessAccountId: string;
 
   constructor(apiKey: string) {
+    if (!apiKey) {
+      throw new Error("WhatsApp API key is required. Please set WHATSAPP_API_KEY in Secrets.");
+    }
     this.apiKey = apiKey;
-    this.phoneNumberId = "544501202086565";
-    this.businessAccountId = "561557767042419";
+    this.phoneNumberId = process.env.WHATSAPP_PHONE_ID || "544501202086565";
+    this.businessAccountId = process.env.WHATSAPP_BUSINESS_ID || "561557767042419";
+    console.log("WhatsApp integration initialized with phone ID:", this.phoneNumberId);
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
