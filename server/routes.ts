@@ -101,6 +101,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/whatsapp-groups/:id/send", async (req, res) => {
+    const { message } = req.body;
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ message: "Message is required" });
+    }
+
+    try {
+      const success = await storage.sendMessageToGroup(Number(req.params.id), message);
+      if (!success) {
+        return res.status(404).json({ message: "WhatsApp group not found" });
+      }
+      res.json({ message: "Message sent successfully" });
+    } catch (error) {
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to send message"
+      });
+    }
+  });
+
   app.post("/api/process-message", async (req, res) => {
     const { message } = req.body;
     if (!message || typeof message !== "string") {

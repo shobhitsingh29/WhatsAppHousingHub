@@ -138,16 +138,47 @@ export class MemStorage implements IStorage {
       return 0;
     }
 
-    // Update last scraped timestamp
-    const updated: WhatsAppGroup = {
-      ...group,
-      lastScraped: new Date().toISOString(),
-    };
-    this.whatsAppGroups.set(groupId, updated);
-    console.log(`Updated last scraped timestamp for group ${groupId}`);
+    try {
+      const messages = await whatsAppClient.getGroupMessages(group.inviteLink);
+      let newListings = 0;
 
-    // Real messages will come through the webhook endpoint
-    return 0;
+      for (const message of messages) {
+        const listing = await this.processWhatsAppMessage(message);
+        if (listing) {
+          newListings++;
+        }
+      }
+
+      // Update last scraped timestamp
+      const updated: WhatsAppGroup = {
+        ...group,
+        lastScraped: new Date().toISOString(),
+      };
+      this.whatsAppGroups.set(groupId, updated);
+      console.log(`Created ${newListings} new listings from group ${groupId}`);
+
+      return newListings;
+    } catch (error) {
+      console.error(`Failed to scrape messages from group ${groupId}:`, error);
+      return 0;
+    }
+  }
+
+  async sendMessageToGroup(groupId: number, message: string): Promise<boolean> {
+    const group = this.whatsAppGroups.get(groupId);
+    if (!group) {
+      console.log(`Group ${groupId} not found`);
+      return false;
+    }
+
+    try {
+      await whatsAppClient.sendMessage(group.inviteLink, message);
+      console.log(`Message sent to group ${groupId}`);
+      return true;
+    } catch (error) {
+      console.error(`Failed to send message to group ${groupId}:`, error);
+      return false;
+    }
   }
 }
 

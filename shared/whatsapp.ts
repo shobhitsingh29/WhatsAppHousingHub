@@ -81,6 +81,21 @@ export class WhatsAppIntegration {
       return [];
     }
   }
+
+  async getGroupMessages(inviteLink: string): Promise<string[]> {
+    // This is a placeholder;  Replace with actual API call when available.
+    console.warn("getGroupMessages: Using placeholder data.  Replace with actual API call.");
+    return [
+      "2 BHK apartment in Berlin Mitte, €1500, furnished, contact: +491234567890",
+      "Studio flat available, Kreuzberg area, €900/month, call +491234567891"
+    ];
+  }
+
+  async sendMessage(inviteLink: string, message: string): Promise<void> {
+    // This is a placeholder; Replace with actual API call when available.
+    console.warn("sendMessage: Using placeholder. Replace with actual API call.");
+    console.log(`Sending message to ${inviteLink}: ${message}`);
+  }
 }
 
 // Initialize the WhatsApp client with the API key from environment
