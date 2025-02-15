@@ -92,9 +92,31 @@ export class WhatsAppIntegration {
   }
 
   async sendMessage(inviteLink: string, message: string): Promise<void> {
-    // This is a placeholder; Replace with actual API call when available.
-    console.warn("sendMessage: Using placeholder. Replace with actual API call.");
-    console.log(`Sending message to ${inviteLink}: ${message}`);
+    try {
+      const response = await fetch(`${this.baseUrl}/${this.phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: inviteLink.split('/').pop(), // Extract group ID from invite link
+          type: "text",
+          text: { body: message }
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new WhatsAppError(error.message || 'Failed to send message', response.status.toString());
+      }
+      
+      console.log('Message sent successfully');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      throw error;
+    }
   }
 }
 

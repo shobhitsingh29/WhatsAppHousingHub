@@ -108,14 +108,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const success = await storage.sendMessageToGroup(Number(req.params.id), message);
-      if (!success) {
+      const group = await storage.getWhatsAppGroups();
+      const targetGroup = group.find(g => g.id === Number(req.params.id));
+      
+      if (!targetGroup) {
         return res.status(404).json({ message: "WhatsApp group not found" });
       }
+
+      if (!targetGroup.isActive) {
+        return res.status(400).json({ message: "WhatsApp group is not active" });
+      }
+
+      await whatsAppClient.sendMessage(targetGroup.inviteLink, message);
       res.json({ message: "Message sent successfully" });
     } catch (error) {
+      console.error('Error in send message endpoint:', error);
       res.status(500).json({
-        message: error instanceof Error ? error.message : "Failed to send message"
+        message: error instanceof Error ? error.message : "Failed to send message",
+        details: error instanceof Error ? error.stack : undefined
       });
     }
   });
