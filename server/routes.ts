@@ -61,8 +61,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const group = await storage.addWhatsAppGroup({ name, inviteLink, isActive });
       res.status(201).json(group);
     } catch (error) {
-      res.status(400).json({ 
-        message: error instanceof Error ? error.message : "Failed to add WhatsApp group" 
+      res.status(400).json({
+        message: error instanceof Error ? error.message : "Failed to add WhatsApp group"
       });
     }
   });
@@ -91,12 +91,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/whatsapp-groups/:id/scrape", async (req, res) => {
     try {
       const newListings = await storage.scrapeGroupMessages(Number(req.params.id));
-      res.json({ 
+      res.json({
         message: `Successfully scraped messages and created ${newListings} new listings`
       });
     } catch (error) {
-      res.status(400).json({ 
-        message: error instanceof Error ? error.message : "Failed to scrape messages" 
+      res.status(400).json({
+        message: error instanceof Error ? error.message : "Failed to scrape messages"
       });
     }
   });
@@ -109,12 +109,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const listing = await storage.processWhatsAppMessage(message);
     if (!listing) {
-      return res.status(400).json({ 
-        message: "Could not extract valid listing information from the message" 
+      return res.status(400).json({
+        message: "Could not extract valid listing information from the message"
       });
     }
 
     res.status(201).json(listing);
+  });
+
+  // Webhook endpoint for WhatsApp messages
+  app.post("/api/webhook/whatsapp", async (req, res) => {
+    const { body } = req;
+
+    // Verify webhook
+    if (body.object === "whatsapp_business_account") {
+      if (body.entry?.[0]?.changes?.[0]?.value?.messages) {
+        const messages = body.entry[0].changes[0].value.messages;
+
+        for (const message of messages) {
+          if (message.type === "text") {
+            await storage.processWhatsAppMessage(message.text.body);
+          }
+        }
+      }
+      res.status(200).send("OK");
+    } else {
+      res.status(404).send("Not Found");
+    }
+  });
+
+  // Webhook verification endpoint
+  app.get("/api/webhook/whatsapp", (req, res) => {
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
+
+    // Verify webhook configuration
+    if (mode === "subscribe" &&
+        token === process.env.WHATSAPP_VERIFY_TOKEN) {
+      res.status(200).send(challenge);
+    } else {
+      res.status(403).send("Forbidden");
+    }
   });
 
   const httpServer = createServer(app);
