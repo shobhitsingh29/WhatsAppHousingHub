@@ -52,19 +52,37 @@ export class WhatsAppIntegration {
       ...options.headers,
     };
 
-    console.log(`Making WhatsApp API request to: ${url}`);
-    const response = await fetch(url, { ...options, headers });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`WhatsApp API error: ${response.status} - ${errorText}`);
-      throw new WhatsAppError(
-        `WhatsApp API request failed: ${response.statusText}`,
-        response.status.toString(),
-      );
+    // Add default WhatsApp messaging parameters
+    if (options.method === 'POST' && !options.body) {
+      options.body = JSON.stringify({
+        messaging_product: "whatsapp",
+        ...JSON.parse(options.body as string || '{}')
+      });
     }
 
-    return await response.json();
+    console.log(`Making WhatsApp API request to: ${url}`);
+    console.log('Request options:', { headers, ...options });
+    
+    const response = await fetch(url, { ...options, headers });
+    const responseText = await response.text();
+    
+    try {
+      const responseData = JSON.parse(responseText);
+      console.log('Response data:', responseData);
+      
+      if (!response.ok) {
+        console.error(`WhatsApp API error: ${response.status} - ${responseText}`);
+        throw new WhatsAppError(
+          `WhatsApp API request failed: ${response.statusText}`,
+          response.status.toString(),
+        );
+      }
+      
+      return responseData;
+    } catch (e) {
+      console.error('Failed to parse response:', responseText);
+      throw e;
+    }
   }
 
   async joinGroup(
@@ -105,21 +123,21 @@ export class WhatsAppIntegration {
     try {
       const groupId = inviteLink.split("/").pop();
       const response = await this.makeRequest(
-        `/${this.phoneNumberId}/messages?recipient_type=group&id=${groupId}`,
+        `/${this.phoneNumberId}/messages`,
         {
-          method: "GET",
-        },
+          method: "POST",
+          body: JSON.stringify({
+            to: groupId,
+            type: "text",
+            text: { body: "Checking messages..." }
+          })
+        }
       );
 
       console.log("WhatsApp API response:", response);
 
-      if (response.messages) {
-        debugger;
-        return response.messages
-          .filter((msg: any) => msg.type === "text")
-          .map((msg: any) => msg.text.body);
-      }
-
+      // For now return empty array since we need to implement webhooks
+      // to properly receive group messages
       return [];
     } catch (error) {
       console.error("Failed to fetch group messages:", error);
