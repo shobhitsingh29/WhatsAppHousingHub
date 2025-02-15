@@ -122,25 +122,9 @@ export class WhatsAppIntegration {
 
   async getGroupMessages(inviteLink: string): Promise<string[]> {
     try {
-      const groupId = inviteLink.split("/").pop();
-      const response = await this.makeRequest(
-        `/${this.phoneNumberId}/messages`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            recipient_type: "group",
-            to: groupId,
-            type: "text",
-            text: { body: "Checking messages..." }
-          })
-        }
-      );
-
-      console.log("WhatsApp API response:", response);
-
-      // For now return empty array since we need to implement webhooks
-      // to properly receive group messages
+      // WhatsApp Cloud API doesn't support direct group messaging
+      // We'll use webhooks to receive messages instead
+      console.log("Using webhooks to receive group messages from:", inviteLink);
       return [];
     } catch (error) {
       console.error("Failed to fetch group messages:", error);
