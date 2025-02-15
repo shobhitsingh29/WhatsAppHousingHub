@@ -83,12 +83,25 @@ export class WhatsAppIntegration {
   }
 
   async getGroupMessages(inviteLink: string): Promise<string[]> {
-    // This is a placeholder;  Replace with actual API call when available.
-    console.warn("getGroupMessages: Using placeholder data.  Replace with actual API call.");
-    return [
-      "2 BHK apartment in Berlin Mitte, €1500, furnished, contact: +491234567890",
-      "Studio flat available, Kreuzberg area, €900/month, call +491234567891"
-    ];
+    try {
+      const groupId = inviteLink.split('/').pop();
+      const response = await this.makeRequest(`/${this.phoneNumberId}/messages?recipient_type=group&id=${groupId}`, {
+        method: 'GET'
+      });
+
+      console.log('WhatsApp API response:', response);
+      
+      if (response.messages) {
+        return response.messages
+          .filter((msg: any) => msg.type === 'text')
+          .map((msg: any) => msg.text.body);
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Failed to fetch group messages:', error);
+      return [];
+    }
   }
 
   async sendMessage(inviteLink: string, message: string): Promise<void> {
