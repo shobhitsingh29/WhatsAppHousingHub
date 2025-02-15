@@ -120,20 +120,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Webhook endpoint for WhatsApp messages
   app.post("/api/webhook/whatsapp", async (req, res) => {
     const { body } = req;
+    console.log("Received webhook payload:", JSON.stringify(body, null, 2));
 
     // Verify webhook
     if (body.object === "whatsapp_business_account") {
       if (body.entry?.[0]?.changes?.[0]?.value?.messages) {
         const messages = body.entry[0].changes[0].value.messages;
+        console.log(`Processing ${messages.length} messages from webhook`);
 
         for (const message of messages) {
           if (message.type === "text") {
-            await storage.processWhatsAppMessage(message.text.body);
+            console.log("Processing text message:", message.text.body);
+            const listing = await storage.processWhatsAppMessage(message.text.body);
+            if (listing) {
+              console.log("Created new listing from message:", listing.id);
+            }
+          } else {
+            console.log("Skipping non-text message of type:", message.type);
           }
         }
+      } else {
+        console.log("No messages found in webhook payload");
       }
       res.status(200).send("OK");
     } else {
+      console.log("Invalid webhook object type:", body.object);
       res.status(404).send("Not Found");
     }
   });
@@ -144,11 +155,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const token = req.query["hub.verify_token"];
     const challenge = req.query["hub.challenge"];
 
+    console.log("Webhook verification request:", {
+      mode,
+      token,
+      challenge,
+      expectedToken: process.env.WHATSAPP_VERIFY_TOKEN
+    });
+
     // Verify webhook configuration
     if (mode === "subscribe" &&
         token === process.env.WHATSAPP_VERIFY_TOKEN) {
+      console.log("Webhook verified successfully");
       res.status(200).send(challenge);
     } else {
+      console.log("Webhook verification failed");
       res.status(403).send("Forbidden");
     }
   });

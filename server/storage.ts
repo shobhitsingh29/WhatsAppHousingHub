@@ -28,24 +28,6 @@ export class MemStorage implements IStorage {
     this.whatsAppGroups = new Map();
     this.currentListingId = 1;
     this.currentGroupId = 1;
-    this.initializeMockData();
-  }
-
-  private initializeMockData() {
-    const mockMessages = [
-      "2 BHK apartment available in Kreuzberg, 1200€/month, fully furnished with modern amenities, contact: +49 123 456789",
-      "Studio flat in Mitte, perfect for students, 800€, furnished, WhatsApp: +49 987 654321, close to transport",
-      "Beautiful 3 bedroom house in Prenzlauer Berg, 2000€, unfurnished, large garden, contact via WhatsApp: +49 555 666777"
-    ];
-
-    mockMessages.forEach(msg => {
-      if (isValidListingMessage(msg)) {
-        const parsedListing = parseWhatsAppMessage(msg);
-        if (this.isValidParsedListing(parsedListing)) {
-          this.createListing(parsedListing as InsertListing);
-        }
-      }
-    });
   }
 
   private isValidParsedListing(listing: Partial<InsertListing>): listing is InsertListing {
@@ -64,20 +46,21 @@ export class MemStorage implements IStorage {
   }
 
   async processWhatsAppMessage(message: string): Promise<Listing | undefined> {
-    console.log("Processing WhatsApp message:", message);
+    console.log("Processing incoming WhatsApp message:", message);
 
     if (!isValidListingMessage(message)) {
-      console.log("Message does not contain valid listing information");
+      console.log("Message rejected: Does not contain valid listing information");
       return undefined;
     }
 
     const parsedListing = parseWhatsAppMessage(message);
     if (!this.isValidParsedListing(parsedListing)) {
-      console.log("Could not parse valid listing from message");
+      console.log("Message rejected: Could not extract all required listing fields");
+      console.log("Parsed fields:", JSON.stringify(parsedListing, null, 2));
       return undefined;
     }
 
-    console.log("Creating new listing from message");
+    console.log("Creating new listing from parsed message:", JSON.stringify(parsedListing, null, 2));
     return this.createListing(parsedListing);
   }
 
@@ -93,6 +76,7 @@ export class MemStorage implements IStorage {
     const id = this.currentListingId++;
     const listing: Listing = { ...insertListing, id };
     this.listings.set(id, listing);
+    console.log("New listing created:", JSON.stringify(listing, null, 2));
     return listing;
   }
 
@@ -114,7 +98,7 @@ export class MemStorage implements IStorage {
   }
 
   async addWhatsAppGroup(group: InsertWhatsAppGroup): Promise<WhatsAppGroup> {
-    // Register the group without trying to join it through API
+    console.log("Registering new WhatsApp group for monitoring:", group.name);
     const id = this.currentGroupId++;
     const newGroup: WhatsAppGroup = {
       ...group,
@@ -123,10 +107,12 @@ export class MemStorage implements IStorage {
     };
 
     this.whatsAppGroups.set(id, newGroup);
+    console.log("WhatsApp group registered successfully:", JSON.stringify(newGroup, null, 2));
     return newGroup;
   }
 
   async removeWhatsAppGroup(id: number): Promise<boolean> {
+    console.log("Unregistering WhatsApp group:", id);
     return this.whatsAppGroups.delete(id);
   }
 
@@ -136,12 +122,21 @@ export class MemStorage implements IStorage {
 
     const updated: WhatsAppGroup = { ...group, isActive };
     this.whatsAppGroups.set(id, updated);
+    console.log(`WhatsApp group ${id} status updated to: ${isActive}`);
     return updated;
   }
 
   async scrapeGroupMessages(groupId: number): Promise<number> {
     const group = this.whatsAppGroups.get(groupId);
-    if (!group) return 0;
+    if (!group) {
+      console.log(`Group ${groupId} not found`);
+      return 0;
+    }
+
+    if (!group.isActive) {
+      console.log(`Group ${groupId} is not active, skipping message scrape`);
+      return 0;
+    }
 
     // Update last scraped timestamp
     const updated: WhatsAppGroup = {
@@ -149,8 +144,9 @@ export class MemStorage implements IStorage {
       lastScraped: new Date().toISOString(),
     };
     this.whatsAppGroups.set(groupId, updated);
+    console.log(`Updated last scraped timestamp for group ${groupId}`);
 
-    // Messages will come through webhooks, so just acknowledge the scrape request
+    // Real messages will come through the webhook endpoint
     return 0;
   }
 }
