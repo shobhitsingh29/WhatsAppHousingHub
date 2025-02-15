@@ -63,14 +63,14 @@ export class WhatsAppIntegration {
 
     console.log(`Making WhatsApp API request to: ${url}`);
     console.log('Request options:', { headers, ...options });
-    
+
     const response = await fetch(url, { ...options, headers });
     const responseText = await response.text();
-    
+
     try {
       const responseData = JSON.parse(responseText);
       console.log('Response data:', responseData);
-      
+
       if (!response.ok) {
         console.error(`WhatsApp API error: ${response.status} - ${responseText}`);
         throw new WhatsAppError(
@@ -78,7 +78,7 @@ export class WhatsAppIntegration {
           response.status.toString(),
         );
       }
-      
+
       return responseData;
     } catch (e) {
       console.error('Failed to parse response:', responseText);
@@ -132,13 +132,14 @@ export class WhatsAppIntegration {
     }
   }
 
-  async sendMessage(inviteLink: string, message: string): Promise<void> {
+  async sendMessage(to: string, message: string): Promise<void> {
     try {
-      console.log("Sending message:", { inviteLink, message });
-      const groupId = inviteLink.split("/").pop();
+      console.log("Sending message:", { to, message });
+      // If it's a phone number, use it directly, otherwise try to extract group ID
+      const recipient = to.includes("+") ? to : to.split("/").pop();
 
-      if (!groupId) {
-        throw new WhatsAppError("Invalid group invite link", "INVALID_LINK");
+      if (!recipient) {
+        throw new WhatsAppError("Invalid recipient", "INVALID_RECIPIENT");
       }
 
       const response = await this.makeRequest(
@@ -147,12 +148,11 @@ export class WhatsAppIntegration {
           method: "POST",
           body: JSON.stringify({
             messaging_product: "whatsapp",
-            recipient_type: "group",
-            to: groupId,
+            to: recipient,
             type: "text",
-            text: { body: message },
-          }),
-        },
+            text: { body: message }
+          })
+        }
       );
 
       console.log("WhatsApp API response:", response);
