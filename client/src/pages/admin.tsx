@@ -28,6 +28,7 @@ export default function Admin() {
   const { toast } = useToast();
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupLink, setNewGroupLink] = useState("");
+  const [message, setMessage] = useState(""); // Added message state
 
   const { data: listings, isLoading: listingsLoading } = useQuery<Listing[]>({
     queryKey: ["/api/listings"],
@@ -139,10 +140,31 @@ export default function Admin() {
     },
   });
 
+  const sendMessageMutation = useMutation({ // Added sendMessageMutation
+    mutationFn: async (data: { groupId: number; message: string }) => {
+      await apiRequest("POST", `/api/whatsapp-groups/${data.groupId}/send-message`, data);
+    },
+    onSuccess: () => {
+      setMessage(""); // Clear message input after successful send
+      toast({ title: "Success", description: "Message sent successfully!" });
+    },
+    onError: (err) => {
+      toast({
+        title: "Error",
+        description: `Failed to send message: ${err.message}`,
+        variant: "destructive",
+      });
+    },
+  });
+
 
   const handleAddGroup = (e: React.FormEvent) => {
     e.preventDefault();
     addGroupMutation.mutate({ name: newGroupName, inviteLink: newGroupLink });
+  };
+
+  const handleSendMessage = (groupId: number) => {
+    sendMessageMutation.mutate({ groupId, message });
   };
 
   if (listingsLoading || groupsLoading) {
@@ -194,12 +216,27 @@ export default function Admin() {
                 <TableRow key={group.id}>
                   <TableCell>{group.name}</TableCell>
                   <TableCell>
-                    <Switch
-                      checked={group.isActive}
-                      onCheckedChange={(isActive) =>
-                        toggleGroupMutation.mutate({ id: group.id, isActive })
-                      }
-                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleGroupMutation.mutate({ id: group.id, isActive: !group.isActive })}
+                    >
+                      <Switch checked={group.isActive} />
+                    </Button>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        placeholder="Type a message..."
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => handleSendMessage(group.id)}
+                        disabled={sendMessageMutation.isPending}
+                      >
+                        Send
+                      </Button>
+                    </div>
                   </TableCell>
                   <TableCell>
                     {new Date(group.lastScraped).toLocaleString()}
