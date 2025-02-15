@@ -23,10 +23,12 @@ export class WhatsAppIntegration {
   private apiKey: string;
   private baseUrl = "https://graph.facebook.com/v19.0";
   private phoneNumberId: string;
+  private businessAccountId: string;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
     this.phoneNumberId = "544501202086565";
+    this.businessAccountId = "561557767042419";
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
