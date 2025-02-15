@@ -64,15 +64,20 @@ export class MemStorage implements IStorage {
   }
 
   async processWhatsAppMessage(message: string): Promise<Listing | undefined> {
+    console.log("Processing WhatsApp message:", message);
+
     if (!isValidListingMessage(message)) {
+      console.log("Message does not contain valid listing information");
       return undefined;
     }
 
     const parsedListing = parseWhatsAppMessage(message);
     if (!this.isValidParsedListing(parsedListing)) {
+      console.log("Could not parse valid listing from message");
       return undefined;
     }
 
+    console.log("Creating new listing from message");
     return this.createListing(parsedListing);
   }
 
@@ -109,11 +114,7 @@ export class MemStorage implements IStorage {
   }
 
   async addWhatsAppGroup(group: InsertWhatsAppGroup): Promise<WhatsAppGroup> {
-    const joinResult = await whatsAppClient.joinGroup(group.inviteLink);
-    if (!joinResult.success) {
-      throw new Error(`Failed to join WhatsApp group: ${joinResult.message}`);
-    }
-
+    // Register the group without trying to join it through API
     const id = this.currentGroupId++;
     const newGroup: WhatsAppGroup = {
       ...group,
@@ -126,10 +127,6 @@ export class MemStorage implements IStorage {
   }
 
   async removeWhatsAppGroup(id: number): Promise<boolean> {
-    const group = this.whatsAppGroups.get(id);
-    if (!group) return false;
-
-    await whatsAppClient.leaveGroup(id.toString());
     return this.whatsAppGroups.delete(id);
   }
 
@@ -146,21 +143,15 @@ export class MemStorage implements IStorage {
     const group = this.whatsAppGroups.get(groupId);
     if (!group) return 0;
 
-    const messages = await whatsAppClient.fetchMessages(groupId.toString());
-    let newListings = 0;
-
-    for (const message of messages) {
-      const listing = await this.processWhatsAppMessage(message);
-      if (listing) newListings++;
-    }
-
+    // Update last scraped timestamp
     const updated: WhatsAppGroup = {
       ...group,
       lastScraped: new Date().toISOString(),
     };
     this.whatsAppGroups.set(groupId, updated);
 
-    return newListings;
+    // Messages will come through webhooks, so just acknowledge the scrape request
+    return 0;
   }
 }
 
