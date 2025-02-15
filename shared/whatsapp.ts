@@ -92,6 +92,7 @@ export class WhatsAppIntegration {
       console.log('WhatsApp API response:', response);
       
       if (response.messages) {
+        debugger;
         return response.messages
           .filter((msg: any) => msg.type === 'text')
           .map((msg: any) => msg.text.body);

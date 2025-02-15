@@ -1,0 +1,35 @@
+atsApp API error: 401 - {"error":{"message":"Error validating access token: This may be because the user logged out or may be due to a system error.","type":"OAuthException","code":190,"error_subcode":467,"fbtrace_id":"AbKLmtVqfC1tcCGEieJSDRO"}}
+Failed to fetch group messages: WhatsAppError: WhatsApp API request failed: Unauthorized
+    at WhatsAppIntegration.makeRequest (/home/runner/workspace/shared/whatsapp.ts:48:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async WhatsAppIntegration.getGroupMessages (/home/runner/workspace/shared/whatsapp.ts:88:24)
+    at async MemStorage.scrapeGroupMessages (/home/runner/workspace/server/storage.ts:142:24)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:93:27) {
+  code: '401'
+}
+Created 0 new listings from group 1
+2:47:30 AM [express] POST /api/whatsapp-groups/1/scrape 200 in 157ms :: {"message":"Successfully scr…
+2:47:30 AM [express] GET /api/listings 304 in 1ms :: []
+Making WhatsApp API request to: https://graph.facebook.com/v19.0/544501202086565/messages?recipient_type=group&id=J21tnwoat8xLL0UlDc1Kg7
+WhatsApp API error: 401 - {"error":{"message":"Error validating access token: This may be because the user logged out or may be due to a system error.","type":"OAuthException","code":190,"error_subcode":467,"fbtrace_id":"AzNh_Qdxj058gqAuw_USeni"}}
+Failed to fetch group messages: WhatsAppError: WhatsApp API request failed: Unauthorized
+    at WhatsAppIntegration.makeRequest (/home/runner/workspace/shared/whatsapp.ts:48:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async WhatsAppIntegration.getGroupMessages (/home/runner/workspace/shared/whatsapp.ts:88:24)
+    at async MemStorage.scrapeGroupMessages (/home/runner/workspace/server/storage.ts:142:24)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:93:27) {
+  code: '401'
+}
+Created 0 new listings from group 1
+2:47:30 AM [express] POST /api/whatsapp-groups/1/scrape 200 in 160ms :: {"message":"Successfully scr…
+2:47:30 AM [express] GET /api/listings 304 in 1ms :: []
+Making WhatsApp API request to: https://graph.facebook.com/v19.0/544501202086565/messages?recipient_type=group&id=J21tnwoat8xLL0UlDc1Kg7
+WhatsApp API error: 401 - {"error":{"message":"Error validating access token: This may be because the user logged out or may be due to a system error.","type":"OAuthException","code":190,"error_subcode":467,"fbtrace_id":"AuhecqPT8BcHg2HoEYrL0lU"}}
+Failed to fetch group messages: WhatsAppError: WhatsApp API request failed: Unauthorized
+    at WhatsAppIntegration.makeRequest (/home/runner/workspace/shared/whatsapp.ts:48:13)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async WhatsAppIntegration.getGroupMessages (/home/runner/workspace/shared/whatsapp.ts:88:24)
+    at async MemStorage.scrapeGroupMessages (/home/runner/workspace/server/storage.ts:142:24)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:93:27) {
+  code: '401'
+}
