@@ -1,5 +1,6 @@
 import { listings, type Listing, type InsertListing } from "@shared/schema";
 import { parseWhatsAppMessage, isValidListingMessage } from "@shared/messageParser";
+import { type WhatsAppGroup, type InsertWhatsAppGroup, whatsAppClient } from "@shared/whatsapp";
 
 export interface IStorage {
   getListings(): Promise<Listing[]>;
@@ -8,15 +9,25 @@ export interface IStorage {
   updateListing(id: number, listing: Partial<InsertListing>): Promise<Listing | undefined>;
   deleteListing(id: number): Promise<boolean>;
   processWhatsAppMessage(message: string): Promise<Listing | undefined>;
+
+  getWhatsAppGroups(): Promise<WhatsAppGroup[]>;
+  addWhatsAppGroup(group: InsertWhatsAppGroup): Promise<WhatsAppGroup>;
+  removeWhatsAppGroup(id: number): Promise<boolean>;
+  updateGroupStatus(id: number, isActive: boolean): Promise<WhatsAppGroup | undefined>;
+  scrapeGroupMessages(groupId: number): Promise<number>; 
 }
 
 export class MemStorage implements IStorage {
   private listings: Map<number, Listing>;
-  private currentId: number;
+  private whatsAppGroups: Map<number, WhatsAppGroup>;
+  private currentListingId: number;
+  private currentGroupId: number;
 
   constructor() {
     this.listings = new Map();
-    this.currentId = 1;
+    this.whatsAppGroups = new Map();
+    this.currentListingId = 1;
+    this.currentGroupId = 1;
     this.initializeMockData();
   }
 
@@ -74,7 +85,7 @@ export class MemStorage implements IStorage {
   }
 
   async createListing(insertListing: InsertListing): Promise<Listing> {
-    const id = this.currentId++;
+    const id = this.currentListingId++;
     const listing: Listing = { ...insertListing, id };
     this.listings.set(id, listing);
     return listing;
@@ -91,6 +102,65 @@ export class MemStorage implements IStorage {
 
   async deleteListing(id: number): Promise<boolean> {
     return this.listings.delete(id);
+  }
+
+  async getWhatsAppGroups(): Promise<WhatsAppGroup[]> {
+    return Array.from(this.whatsAppGroups.values());
+  }
+
+  async addWhatsAppGroup(group: InsertWhatsAppGroup): Promise<WhatsAppGroup> {
+    const joinResult = await whatsAppClient.joinGroup(group.inviteLink);
+    if (!joinResult.success) {
+      throw new Error(`Failed to join WhatsApp group: ${joinResult.message}`);
+    }
+
+    const id = this.currentGroupId++;
+    const newGroup: WhatsAppGroup = {
+      ...group,
+      id,
+      lastScraped: new Date().toISOString(),
+    };
+
+    this.whatsAppGroups.set(id, newGroup);
+    return newGroup;
+  }
+
+  async removeWhatsAppGroup(id: number): Promise<boolean> {
+    const group = this.whatsAppGroups.get(id);
+    if (!group) return false;
+
+    await whatsAppClient.leaveGroup(id.toString());
+    return this.whatsAppGroups.delete(id);
+  }
+
+  async updateGroupStatus(id: number, isActive: boolean): Promise<WhatsAppGroup | undefined> {
+    const group = this.whatsAppGroups.get(id);
+    if (!group) return undefined;
+
+    const updated: WhatsAppGroup = { ...group, isActive };
+    this.whatsAppGroups.set(id, updated);
+    return updated;
+  }
+
+  async scrapeGroupMessages(groupId: number): Promise<number> {
+    const group = this.whatsAppGroups.get(groupId);
+    if (!group) return 0;
+
+    const messages = await whatsAppClient.fetchMessages(groupId.toString());
+    let newListings = 0;
+
+    for (const message of messages) {
+      const listing = await this.processWhatsAppMessage(message);
+      if (listing) newListings++;
+    }
+
+    const updated: WhatsAppGroup = {
+      ...group,
+      lastScraped: new Date().toISOString(),
+    };
+    this.whatsAppGroups.set(groupId, updated);
+
+    return newListings;
   }
 }
 
