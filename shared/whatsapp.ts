@@ -12,7 +12,6 @@ export const whatsAppGroupSchema = z.object({
 export type WhatsAppGroup = z.infer<typeof whatsAppGroupSchema>;
 export type InsertWhatsAppGroup = Omit<WhatsAppGroup, "id" | "lastScraped">;
 
-// Error types for better error handling
 export class WhatsAppError extends Error {
   constructor(message: string, public code: string) {
     super(message);
@@ -23,11 +22,17 @@ export class WhatsAppError extends Error {
 export class WhatsAppIntegration {
   private apiKey: string;
   private baseUrl = "https://graph.facebook.com/v19.0";
+  private phoneNumberId: string;
   private retryCount = 3;
-  private retryDelay = 1000; // ms
+  private retryDelay = 1000;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+    // Phone number ID should come from WhatsApp Business API setup
+    this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || "";
+    if (!this.phoneNumberId) {
+      throw new Error("WHATSAPP_PHONE_NUMBER_ID environment variable is required");
+    }
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
@@ -59,18 +64,18 @@ export class WhatsAppIntegration {
     }
   }
 
-  // Join a WhatsApp group using invite link
   async joinGroup(inviteLink: string): Promise<{ success: boolean; message: string }> {
     try {
-      // Note: This would use the actual WhatsApp Business API endpoint
-      // Currently returning mock success as the API doesn't directly support group joining
-      console.log(`Attempting to join WhatsApp group: ${inviteLink}`);
+      // Extract invite code from the link
+      const inviteCode = inviteLink.split('/').pop();
 
-      // In reality, this would make an API call like:
-      // await this.makeRequest("/groups/join", {
-      //   method: "POST",
-      //   body: JSON.stringify({ inviteLink })
-      // });
+      // Join group using WhatsApp Cloud API
+      await this.makeRequest(`/${this.phoneNumberId}/groups`, {
+        method: "POST",
+        body: JSON.stringify({
+          invite_code: inviteCode,
+        }),
+      });
 
       return {
         success: true,
@@ -85,16 +90,12 @@ export class WhatsAppIntegration {
     }
   }
 
-  // Leave a WhatsApp group
   async leaveGroup(groupId: string): Promise<{ success: boolean; message: string }> {
     try {
-      // Note: This would use the actual WhatsApp Business API endpoint
-      console.log(`Attempting to leave WhatsApp group: ${groupId}`);
-
-      // In reality, this would make an API call like:
-      // await this.makeRequest(`/groups/${groupId}/leave`, {
-      //   method: "POST"
-      // });
+      // Leave group using WhatsApp Cloud API
+      await this.makeRequest(`/${this.phoneNumberId}/groups/${groupId}`, {
+        method: "DELETE",
+      });
 
       return {
         success: true,
@@ -109,22 +110,23 @@ export class WhatsAppIntegration {
     }
   }
 
-  // Fetch messages from a group
   async fetchMessages(groupId: string, since?: Date): Promise<string[]> {
     try {
-      console.log(`Fetching messages from group ${groupId}${since ? ` since ${since.toISOString()}` : ''}`);
+      // Fetch messages using WhatsApp Cloud API
+      const response = await this.makeRequest(
+        `/${this.phoneNumberId}/groups/${groupId}/messages`,
+        {
+          method: "GET",
+          headers: since ? {
+            "After": since.toISOString()
+          } : undefined
+        }
+      );
 
-      // This would make an actual API call like:
-      // const response = await this.makeRequest(`/groups/${groupId}/messages`, {
-      //   method: "GET",
-      //   query: since ? { since: since.toISOString() } : undefined
-      // });
-
-      // For now, return mock messages that match our expected format
-      return [
-        "2 BHK apartment in Kreuzberg, 1200€/month, furnished, contact: +49123456789",
-        "Studio flat available in Mitte, 800€, unfurnished, WhatsApp: +49987654321",
-      ];
+      // Extract text messages from the response
+      return response.messages
+        .filter((msg: any) => msg.type === 'text')
+        .map((msg: any) => msg.text.body);
     } catch (error) {
       console.error("Failed to fetch WhatsApp messages:", error);
       return [];
