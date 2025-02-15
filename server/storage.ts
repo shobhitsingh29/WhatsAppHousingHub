@@ -1,4 +1,5 @@
 import { listings, type Listing, type InsertListing } from "@shared/schema";
+import { parseWhatsAppMessage, isValidListingMessage } from "@shared/messageParser";
 
 export interface IStorage {
   getListings(): Promise<Listing[]>;
@@ -6,6 +7,7 @@ export interface IStorage {
   createListing(listing: InsertListing): Promise<Listing>;
   updateListing(id: number, listing: Partial<InsertListing>): Promise<Listing | undefined>;
   deleteListing(id: number): Promise<boolean>;
+  processWhatsAppMessage(message: string): Promise<Listing | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -19,34 +21,48 @@ export class MemStorage implements IStorage {
   }
 
   private initializeMockData() {
-    const mockListings: InsertListing[] = [
-      {
-        title: "Modern City Apartment",
-        description: "Beautiful apartment in the heart of the city",
-        price: 1200,
-        location: "Berlin Mitte",
-        propertyType: "apartment",
-        bedrooms: 2,
-        bathrooms: 1,
-        imageUrl: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267",
-        furnished: true,
-        contactInfo: "+49 123 456789"
-      },
-      {
-        title: "Cozy Studio",
-        description: "Perfect for students and young professionals",
-        price: 800,
-        location: "Berlin Kreuzberg",
-        propertyType: "studio",
-        bedrooms: 1,
-        bathrooms: 1,
-        imageUrl: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688",
-        furnished: true,
-        contactInfo: "+49 987 654321"
-      }
+    const mockMessages = [
+      "2 BHK apartment available in Kreuzberg, 1200€/month, fully furnished with modern amenities, contact: +49 123 456789",
+      "Studio flat in Mitte, perfect for students, 800€, furnished, WhatsApp: +49 987 654321, close to transport",
+      "Beautiful 3 bedroom house in Prenzlauer Berg, 2000€, unfurnished, large garden, contact via WhatsApp: +49 555 666777"
     ];
 
-    mockListings.forEach(listing => this.createListing(listing));
+    mockMessages.forEach(msg => {
+      if (isValidListingMessage(msg)) {
+        const parsedListing = parseWhatsAppMessage(msg);
+        if (this.isValidParsedListing(parsedListing)) {
+          this.createListing(parsedListing as InsertListing);
+        }
+      }
+    });
+  }
+
+  private isValidParsedListing(listing: Partial<InsertListing>): listing is InsertListing {
+    return !!(
+      listing.title &&
+      listing.description &&
+      listing.price &&
+      listing.location &&
+      listing.propertyType &&
+      listing.bedrooms &&
+      listing.bathrooms &&
+      listing.imageUrl !== undefined &&
+      listing.furnished !== undefined &&
+      listing.contactInfo
+    );
+  }
+
+  async processWhatsAppMessage(message: string): Promise<Listing | undefined> {
+    if (!isValidListingMessage(message)) {
+      return undefined;
+    }
+
+    const parsedListing = parseWhatsAppMessage(message);
+    if (!this.isValidParsedListing(parsedListing)) {
+      return undefined;
+    }
+
+    return this.createListing(parsedListing);
   }
 
   async getListings(): Promise<Listing[]> {
@@ -67,7 +83,7 @@ export class MemStorage implements IStorage {
   async updateListing(id: number, updates: Partial<InsertListing>): Promise<Listing | undefined> {
     const existing = this.listings.get(id);
     if (!existing) return undefined;
-    
+
     const updated: Listing = { ...existing, ...updates };
     this.listings.set(id, updated);
     return updated;

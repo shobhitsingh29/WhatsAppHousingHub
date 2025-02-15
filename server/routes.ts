@@ -48,6 +48,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(204).send();
   });
 
+  app.post("/api/process-message", async (req, res) => {
+    const { message } = req.body;
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ message: "Invalid message format" });
+    }
+
+    const listing = await storage.processWhatsAppMessage(message);
+    if (!listing) {
+      return res.status(400).json({ 
+        message: "Could not extract valid listing information from the message" 
+      });
+    }
+
+    res.status(201).json(listing);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
