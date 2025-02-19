@@ -104,7 +104,7 @@ app.use((req, res, next) => {
     });
   });
 
-  const PORT = Number(process.env.PORT) || 5000;
+  const PORT = Number(process.env.PORT) || 10000;
   server.listen(PORT, '0.0.0.0', () => {
     log(`Server running in ${isProduction ? 'production' : 'development'} mode on port ${PORT}`);
   });
