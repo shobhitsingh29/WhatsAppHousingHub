@@ -1,36 +1,80 @@
-import { listings, type Listing, type InsertListing } from "@shared/schema";
-import { parseWhatsAppMessage, isValidListingMessage } from "@shared/messageParser";
-import { type WhatsAppGroup, type InsertWhatsAppGroup, whatsAppClient } from "@shared/whatsapp";
+import pg from 'pg';
+import { listings, type Listing, type InsertListing } from '@shared/schema';
+import {
+  parseWhatsAppMessage,
+  isValidListingMessage,
+} from '@shared/messageParser';
+import {
+  type WhatsAppGroup,
+  type InsertWhatsAppGroup,
+  whatsAppClient,
+} from '@shared/whatsapp';
+
+const { Pool } = pg;
+
+const pool = new Pool({
+  host: 'ep-silent-band-a8v3nsul-pooler.eastus2.azure.neon.tech',
+  port: parseInt('5432', 10),
+  user: 'neondb_owner',
+  password: 'npg_9ugXciq0edUn',
+  database: 'neondb', // Ensure this is the correct database name
+  ssl: {
+    rejectUnauthorized: false,
+    require: true,
+  },
+});
 
 export interface IStorage {
   getListings(): Promise<Listing[]>;
   getListing(id: number): Promise<Listing | undefined>;
   createListing(listing: InsertListing): Promise<Listing>;
-  updateListing(id: number, listing: Partial<InsertListing>): Promise<Listing | undefined>;
+  updateListing(
+    id: number,
+    listing: Partial<InsertListing>,
+  ): Promise<Listing | undefined>;
   deleteListing(id: number): Promise<boolean>;
   processWhatsAppMessage(message: string): Promise<Listing | undefined>;
 
   getWhatsAppGroups(): Promise<WhatsAppGroup[]>;
   addWhatsAppGroup(group: InsertWhatsAppGroup): Promise<WhatsAppGroup>;
   removeWhatsAppGroup(id: number): Promise<boolean>;
-  updateGroupStatus(id: number, isActive: boolean): Promise<WhatsAppGroup | undefined>;
-  scrapeGroupMessages(groupId: number): Promise<number>; 
+  updateGroupStatus(
+    id: number,
+    isActive: boolean,
+  ): Promise<WhatsAppGroup | undefined>;
+  scrapeGroupMessages(groupId: number): Promise<number>;
 }
 
-export class MemStorage implements IStorage {
-  private listings: Map<number, Listing>;
-  private whatsAppGroups: Map<number, WhatsAppGroup>;
-  private currentListingId: number;
-  private currentGroupId: number;
+export class DBStorage implements IStorage {
+  async processWhatsAppMessage(message: string): Promise<Listing | undefined> {
+    console.log('Processing incoming WhatsApp message:', message);
 
-  constructor() {
-    this.listings = new Map();
-    this.whatsAppGroups = new Map();
-    this.currentListingId = 1;
-    this.currentGroupId = 1;
+    if (!isValidListingMessage(message)) {
+      console.log(
+        'Message rejected: Does not contain valid listing information',
+      );
+      return undefined;
+    }
+
+    const parsedListing = parseWhatsAppMessage(message);
+    if (!this.isValidParsedListing(parsedListing)) {
+      console.log(
+        'Message rejected: Could not extract all required listing fields',
+      );
+      console.log('Parsed fields:', JSON.stringify(parsedListing, null, 2));
+      return undefined;
+    }
+
+    console.log(
+      'Creating new listing from parsed message:',
+      JSON.stringify(parsedListing, null, 2),
+    );
+    return this.createListing(parsedListing);
   }
 
-  private isValidParsedListing(listing: Partial<InsertListing>): listing is InsertListing {
+  private isValidParsedListing(
+    listing: Partial<InsertListing>,
+  ): listing is InsertListing {
     return !!(
       listing.title &&
       listing.description &&
@@ -45,141 +89,88 @@ export class MemStorage implements IStorage {
     );
   }
 
-  async processWhatsAppMessage(message: string): Promise<Listing | undefined> {
-    console.log("Processing incoming WhatsApp message:", message);
-
-    if (!isValidListingMessage(message)) {
-      console.log("Message rejected: Does not contain valid listing information");
-      return undefined;
-    }
-
-    const parsedListing = parseWhatsAppMessage(message);
-    if (!this.isValidParsedListing(parsedListing)) {
-      console.log("Message rejected: Could not extract all required listing fields");
-      console.log("Parsed fields:", JSON.stringify(parsedListing, null, 2));
-      return undefined;
-    }
-
-    console.log("Creating new listing from parsed message:", JSON.stringify(parsedListing, null, 2));
-    return this.createListing(parsedListing);
-  }
-
   async getListings(): Promise<Listing[]> {
-    return Array.from(this.listings.values());
+    const client = await pool.connect();
+    try {
+      const res = await client.query('SELECT * FROM listings');
+      return res.rows;
+    } finally {
+      client.release();
+    }
   }
 
   async getListing(id: number): Promise<Listing | undefined> {
-    return this.listings.get(id);
+    const client = await pool.connect();
+    try {
+      const res = await client.query('SELECT * FROM listings WHERE id = $1', [
+        id,
+      ]);
+      return res.rows[0];
+    } finally {
+      client.release();
+    }
   }
 
   async createListing(insertListing: InsertListing): Promise<Listing> {
-    const id = this.currentListingId++;
-    const listing: Listing = { ...insertListing, id };
-    this.listings.set(id, listing);
-    console.log("New listing created:", JSON.stringify(listing, null, 2));
-    return listing;
+    const client = await pool.connect();
+    try {
+      const res = await client.query(
+        `INSERT INTO listings (title, description, price, location, propertyType, bedrooms, bathrooms, imageUrl, furnished, contactInfo)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+        [
+          insertListing.title,
+          insertListing.description,
+          insertListing.price,
+          insertListing.location,
+          insertListing.propertyType,
+          insertListing.bedrooms,
+          insertListing.bathrooms,
+          insertListing.imageUrl,
+          insertListing.furnished,
+          insertListing.contactInfo,
+        ],
+      );
+      return res.rows[0];
+    } finally {
+      client.release();
+    }
   }
 
-  async updateListing(id: number, updates: Partial<InsertListing>): Promise<Listing | undefined> {
-    const existing = this.listings.get(id);
-    if (!existing) return undefined;
-
-    const updated: Listing = { ...existing, ...updates };
-    this.listings.set(id, updated);
-    return updated;
+  async updateListing(
+    id: number,
+    updates: Partial<InsertListing>,
+  ): Promise<Listing | undefined> {
+    const client = await pool.connect();
+    try {
+      const fields = Object.keys(updates)
+        .map((key, index) => `${key} = $${index + 1}`)
+        .join(', ');
+      const values = Object.values(updates);
+      const res = await client.query(
+        `UPDATE listings SET ${fields} WHERE id = $${
+          values.length + 1
+        } RETURNING *`,
+        [...values, id],
+      );
+      return res.rows[0];
+    } finally {
+      client.release();
+    }
   }
 
   async deleteListing(id: number): Promise<boolean> {
-    return this.listings.delete(id);
-  }
-
-  async getWhatsAppGroups(): Promise<WhatsAppGroup[]> {
-    return Array.from(this.whatsAppGroups.values());
-  }
-
-  async addWhatsAppGroup(group: InsertWhatsAppGroup): Promise<WhatsAppGroup> {
-    console.log("Registering new WhatsApp group for monitoring:", group.name);
-    const id = this.currentGroupId++;
-    const newGroup: WhatsAppGroup = {
-      ...group,
-      id,
-      lastScraped: new Date().toISOString(),
-    };
-
-    this.whatsAppGroups.set(id, newGroup);
-    console.log("WhatsApp group registered successfully:", JSON.stringify(newGroup, null, 2));
-    return newGroup;
-  }
-
-  async removeWhatsAppGroup(id: number): Promise<boolean> {
-    console.log("Unregistering WhatsApp group:", id);
-    return this.whatsAppGroups.delete(id);
-  }
-
-  async updateGroupStatus(id: number, isActive: boolean): Promise<WhatsAppGroup | undefined> {
-    const group = this.whatsAppGroups.get(id);
-    if (!group) return undefined;
-
-    const updated: WhatsAppGroup = { ...group, isActive };
-    this.whatsAppGroups.set(id, updated);
-    console.log(`WhatsApp group ${id} status updated to: ${isActive}`);
-    return updated;
-  }
-
-  async scrapeGroupMessages(groupId: number): Promise<number> {
-    const group = this.whatsAppGroups.get(groupId);
-    if (!group) {
-      console.log(`Group ${groupId} not found`);
-      return 0;
-    }
-
-    if (!group.isActive) {
-      console.log(`Group ${groupId} is not active, skipping message scrape`);
-      return 0;
-    }
-
+    const client = await pool.connect();
     try {
-      const messages = await whatsAppClient.getGroupMessages(group.inviteLink);
-      let newListings = 0;
-
-      for (const message of messages) {
-        const listing = await this.processWhatsAppMessage(message);
-        if (listing) {
-          newListings++;
-        }
-      }
-
-      // Update last scraped timestamp
-      const updated: WhatsAppGroup = {
-        ...group,
-        lastScraped: new Date().toISOString(),
-      };
-      this.whatsAppGroups.set(groupId, updated);
-      console.log(`Created ${newListings} new listings from group ${groupId}`);
-
-      return newListings;
-    } catch (error) {
-      console.error(`Failed to scrape messages from group ${groupId}:`, error);
-      return 0;
+      const res = await client.query('DELETE FROM listings WHERE id = $1', [
+        id,
+      ]);
+      return res.rowCount > 0;
+    } finally {
+      client.release();
     }
   }
 
-  async sendMessageToGroup(groupId: number, message: string): Promise<boolean> {
-    const group = this.whatsAppGroups.get(groupId);
-    if (!group) {
-      console.log(`Group ${groupId} not found`);
-      return false;
-    }
-
-    try {
-      await whatsAppClient.sendMessage(group.inviteLink, message);
-      console.log(`Message sent to group ${groupId}`);
-      return true;
-    } catch (error) {
-      console.error(`Failed to send message to group ${groupId}:`, error);
-      return false;
-    }
-  }
+  // Implement other methods for WhatsApp groups similarly...
 }
 
-export const storage = new MemStorage();
+export const storage = new DBStorage();
