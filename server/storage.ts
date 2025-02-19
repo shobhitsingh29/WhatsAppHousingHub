@@ -1,20 +1,33 @@
-import { listings, type Listing, type InsertListing } from "@shared/schema";
-import { parseWhatsAppMessage, isValidListingMessage } from "@shared/messageParser";
-import { type WhatsAppGroup, type InsertWhatsAppGroup, whatsAppClient } from "@shared/whatsapp";
+import { listings, type Listing, type InsertListing } from '@shared/schema';
+import {
+  parseWhatsAppMessage,
+  isValidListingMessage,
+} from '@shared/messageParser';
+import {
+  type WhatsAppGroup,
+  type InsertWhatsAppGroup,
+  whatsAppClient,
+} from '@shared/whatsapp';
 
 export interface IStorage {
   getListings(): Promise<Listing[]>;
   getListing(id: number): Promise<Listing | undefined>;
   createListing(listing: InsertListing): Promise<Listing>;
-  updateListing(id: number, listing: Partial<InsertListing>): Promise<Listing | undefined>;
+  updateListing(
+    id: number,
+    listing: Partial<InsertListing>,
+  ): Promise<Listing | undefined>;
   deleteListing(id: number): Promise<boolean>;
   processWhatsAppMessage(message: string): Promise<Listing | undefined>;
 
   getWhatsAppGroups(): Promise<WhatsAppGroup[]>;
   addWhatsAppGroup(group: InsertWhatsAppGroup): Promise<WhatsAppGroup>;
   removeWhatsAppGroup(id: number): Promise<boolean>;
-  updateGroupStatus(id: number, isActive: boolean): Promise<WhatsAppGroup | undefined>;
-  scrapeGroupMessages(groupId: number): Promise<number>; 
+  updateGroupStatus(
+    id: number,
+    isActive: boolean,
+  ): Promise<WhatsAppGroup | undefined>;
+  scrapeGroupMessages(groupId: number): Promise<number>;
 }
 
 export class MemStorage implements IStorage {
@@ -30,7 +43,9 @@ export class MemStorage implements IStorage {
     this.currentGroupId = 1;
   }
 
-  private isValidParsedListing(listing: Partial<InsertListing>): listing is InsertListing {
+  private isValidParsedListing(
+    listing: Partial<InsertListing>,
+  ): listing is InsertListing {
     return !!(
       listing.title &&
       listing.description &&
@@ -46,21 +61,28 @@ export class MemStorage implements IStorage {
   }
 
   async processWhatsAppMessage(message: string): Promise<Listing | undefined> {
-    console.log("Processing incoming WhatsApp message:", message);
+    console.log('Processing incoming WhatsApp message:', message);
 
     if (!isValidListingMessage(message)) {
-      console.log("Message rejected: Does not contain valid listing information");
+      console.log(
+        'Message rejected: Does not contain valid listing information',
+      );
       return undefined;
     }
 
     const parsedListing = parseWhatsAppMessage(message);
     if (!this.isValidParsedListing(parsedListing)) {
-      console.log("Message rejected: Could not extract all required listing fields");
-      console.log("Parsed fields:", JSON.stringify(parsedListing, null, 2));
+      console.log(
+        'Message rejected: Could not extract all required listing fields',
+      );
+      console.log('Parsed fields:', JSON.stringify(parsedListing, null, 2));
       return undefined;
     }
 
-    console.log("Creating new listing from parsed message:", JSON.stringify(parsedListing, null, 2));
+    console.log(
+      'Creating new listing from parsed message:',
+      JSON.stringify(parsedListing, null, 2),
+    );
     return this.createListing(parsedListing);
   }
 
@@ -76,11 +98,14 @@ export class MemStorage implements IStorage {
     const id = this.currentListingId++;
     const listing: Listing = { ...insertListing, id };
     this.listings.set(id, listing);
-    console.log("New listing created:", JSON.stringify(listing, null, 2));
+    console.log('New listing created:', JSON.stringify(listing, null, 2));
     return listing;
   }
 
-  async updateListing(id: number, updates: Partial<InsertListing>): Promise<Listing | undefined> {
+  async updateListing(
+    id: number,
+    updates: Partial<InsertListing>,
+  ): Promise<Listing | undefined> {
     const existing = this.listings.get(id);
     if (!existing) return undefined;
 
@@ -98,7 +123,7 @@ export class MemStorage implements IStorage {
   }
 
   async addWhatsAppGroup(group: InsertWhatsAppGroup): Promise<WhatsAppGroup> {
-    console.log("Registering new WhatsApp group for monitoring:", group.name);
+    console.log('Registering new WhatsApp group for monitoring:', group.name);
     const id = this.currentGroupId++;
     const newGroup: WhatsAppGroup = {
       ...group,
@@ -107,16 +132,22 @@ export class MemStorage implements IStorage {
     };
 
     this.whatsAppGroups.set(id, newGroup);
-    console.log("WhatsApp group registered successfully:", JSON.stringify(newGroup, null, 2));
+    console.log(
+      'WhatsApp group registered successfully:',
+      JSON.stringify(newGroup, null, 2),
+    );
     return newGroup;
   }
 
   async removeWhatsAppGroup(id: number): Promise<boolean> {
-    console.log("Unregistering WhatsApp group:", id);
+    console.log('Unregistering WhatsApp group:', id);
     return this.whatsAppGroups.delete(id);
   }
 
-  async updateGroupStatus(id: number, isActive: boolean): Promise<WhatsAppGroup | undefined> {
+  async updateGroupStatus(
+    id: number,
+    isActive: boolean,
+  ): Promise<WhatsAppGroup | undefined> {
     const group = this.whatsAppGroups.get(id);
     if (!group) return undefined;
 
