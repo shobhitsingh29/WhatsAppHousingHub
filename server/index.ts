@@ -69,7 +69,7 @@ app.use((req, res, next) => {
 
   if (isProduction) {
     // Serve static files from the client build directory
-    const clientBuildPath = path.resolve(__dirname, '../dist');
+    const clientBuildPath = path.resolve(__dirname, '../dist/public');
 
     // Serve static files with proper caching headers
     app.use(express.static(clientBuildPath, {
@@ -77,7 +77,7 @@ app.use((req, res, next) => {
       etag: true,
     }));
 
-    // API routes
+    // API routes should be handled before the catch-all
     app.use('/api', (req, res, next) => {
       log(`Processing API request: ${req.method} ${req.path}`);
       req.url = req.url.replace(/^\/api/, '');
@@ -97,14 +97,14 @@ app.use((req, res, next) => {
     console.error('Server Error:', err);
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-    res.status(status).json({ 
+    res.status(status).json({
       error: true,
       message,
       ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
     });
   });
 
-  const PORT = process.env.PORT || 5000;
+  const PORT = Number(process.env.PORT) || 5000;
   server.listen(PORT, '0.0.0.0', () => {
     log(`Server running in ${isProduction ? 'production' : 'development'} mode on port ${PORT}`);
   });
