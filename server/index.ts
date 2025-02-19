@@ -68,11 +68,11 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   if (isProduction) {
-    // Serve static files from the client build directory
-    const clientBuildPath = path.resolve(__dirname, '../dist/public');
+    // Serve static files from the dist directory
+    const distPath = path.resolve(__dirname, '../dist');
 
     // Serve static files with proper caching headers
-    app.use(express.static(clientBuildPath, {
+    app.use(express.static(distPath, {
       maxAge: '1y',
       etag: true,
     }));
@@ -86,7 +86,7 @@ app.use((req, res, next) => {
 
     // Serve index.html for client-side routing
     app.get('*', (req, res) => {
-      res.sendFile(path.join(clientBuildPath, 'index.html'));
+      res.sendFile(path.join(distPath, 'index.html'));
     });
   } else {
     await setupVite(app, server);
