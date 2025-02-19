@@ -40,12 +40,23 @@ function generateProductionTags(manifest) {
 try {
   console.log('Starting post-build processing...');
 
-  // Ensure dist/public directory exists
+  // Create dist/public directory if it doesn't exist
   const publicDir = path.resolve('dist/public');
   if (!fs.existsSync(publicDir)) {
     console.log('Creating dist/public directory...');
     fs.mkdirSync(publicDir, { recursive: true });
   }
+
+  // Copy all files from dist to dist/public
+  const distDir = path.resolve('dist');
+  fs.readdirSync(distDir).forEach((file) => {
+    if (file !== 'public') {
+      const srcPath = path.join(distDir, file);
+      const destPath = path.join(publicDir, file);
+      fs.copyFileSync(srcPath, destPath);
+      console.log(`Copied ${file} to public directory`);
+    }
+  });
 
   const manifestPath = path.join(publicDir, 'manifest.json');
   const indexPath = path.join(publicDir, 'index.html');

@@ -2,6 +2,7 @@ import fs from 'fs';
 import express, { type Request, Response, NextFunction } from "express";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
+import cors from 'cors';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
@@ -14,6 +15,19 @@ const __dirname = dirname(__filename);
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Configure CORS based on environment
+const isProduction = process.env.NODE_ENV === "production";
+const corsOptions = {
+  origin: isProduction
+    ? [process.env.FRONTEND_URL || 'https://your-frontend-domain.vercel.app']
+    : true, // Allow all origins in development
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 
 // Enhanced logging middleware
 app.use((req, res, next) => {
@@ -51,33 +65,20 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const isProduction = process.env.NODE_ENV === "production";
   const server = await registerRoutes(app);
 
   if (isProduction) {
-    // API routes should be handled before static files
+    // API routes only in production
     app.use('/api', (req, res, next) => {
       log(`Processing API request: ${req.method} ${req.path}`);
-      // Strip /api prefix for the actual route handlers
       req.url = req.url.replace(/^\/api/, '');
       next();
-    });
-
-    // Use the serveStatic middleware for production
-    serveStatic(app);
-
-    // Handle client-side routing by serving index.html for non-API routes
-    app.get('*', (req, res) => {
-      if (!req.path.startsWith('/api')) {
-        const indexPath = path.resolve(__dirname, '../dist/public/index.html');
-        res.sendFile(indexPath);
-      }
     });
   } else {
     await setupVite(app, server);
   }
 
-  // Error handling middleware - must be last
+  // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     console.error('Server Error:', err);
     const status = err.status || err.statusCode || 500;
