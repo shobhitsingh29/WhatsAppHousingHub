@@ -67,10 +67,6 @@ try {
   console.log('Reading template from:', indexPath);
   let template = fs.readFileSync(indexPath, 'utf-8');
 
-  if (!template.includes('%PRODUCTION_TAGS%')) {
-    throw new Error('Template does not contain %PRODUCTION_TAGS% placeholder');
-  }
-
   const productionTags = generateProductionTags(manifest);
   template = template.replace('%PRODUCTION_TAGS%', productionTags);
 

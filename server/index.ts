@@ -20,7 +20,7 @@ app.use(express.urlencoded({ extended: false }));
 const isProduction = process.env.NODE_ENV === "production";
 const corsOptions = {
   origin: isProduction
-    ? [process.env.FRONTEND_URL || 'https://your-frontend-domain.vercel.app']
+    ? process.env.FRONTEND_URL || '*'
     : true, // Allow all origins in development
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -68,11 +68,25 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   if (isProduction) {
-    // API routes only in production
+    // Serve static files from the client build directory
+    const clientBuildPath = path.resolve(__dirname, '../dist');
+
+    // Serve static files with proper caching headers
+    app.use(express.static(clientBuildPath, {
+      maxAge: '1y',
+      etag: true,
+    }));
+
+    // API routes
     app.use('/api', (req, res, next) => {
       log(`Processing API request: ${req.method} ${req.path}`);
       req.url = req.url.replace(/^\/api/, '');
       next();
+    });
+
+    // Serve index.html for client-side routing
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(clientBuildPath, 'index.html'));
     });
   } else {
     await setupVite(app, server);
@@ -91,7 +105,7 @@ app.use((req, res, next) => {
   });
 
   const PORT = process.env.PORT || 5000;
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     log(`Server running in ${isProduction ? 'production' : 'development'} mode on port ${PORT}`);
   });
 })().catch(err => {
