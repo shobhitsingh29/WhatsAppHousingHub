@@ -3,8 +3,14 @@ import { getApiUrl } from "./config";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    let errorText;
+    try {
+      const errorData = await res.json();
+      errorText = errorData.message || res.statusText;
+    } catch {
+      errorText = await res.text() || res.statusText;
+    }
+    throw new Error(`${res.status}: ${errorText}`);
   }
 }
 
@@ -14,15 +20,26 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   const url = getApiUrl(path);
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: {
+        ...(data ? { "Content-Type": "application/json" } : {}),
+        "Accept": "application/json",
+      },
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include",
+      mode: "cors",
+    });
 
-  await throwIfResNotOk(res);
-  return res;
+    await throwIfResNotOk(res);
+    return res;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`API Request Failed: ${error.message}`);
+    }
+    throw new Error('API Request Failed');
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -33,16 +50,27 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const [path] = queryKey;
     const url = getApiUrl(path as string);
-    const res = await fetch(url, {
-      credentials: "include",
-    });
+    try {
+      const res = await fetch(url, {
+        credentials: "include",
+        mode: "cors",
+        headers: {
+          "Accept": "application/json",
+        },
+      });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
+
+      await throwIfResNotOk(res);
+      return await res.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`Query Failed: ${error.message}`);
+      }
+      throw new Error('Query Failed');
     }
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
 export const queryClient = new QueryClient({
