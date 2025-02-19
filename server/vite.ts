@@ -1,7 +1,9 @@
-import express, { type Express } from 'express';
-import fs from 'fs';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
+import {
+  createServer as createViteServer,
+  createLogger as viteCreateLogger,
+} from 'vite';
 import { type Server } from 'http';
 import viteConfig from '../vite.config';
 import { nanoid } from 'nanoid';
@@ -83,11 +85,17 @@ export function serveStatic(app: Express) {
   app.use('*', async (req, res, next) => {
     try {
       const manifest = JSON.parse(
-        await fs.promises.readFile(path.resolve(distPath, 'manifest.json'), 'utf-8')
+        await fs.promises.readFile(
+          path.resolve(distPath, 'manifest.json'),
+          'utf-8',
+        ),
       );
 
       const productionTags = generateProductionTags(manifest, 'src/main.tsx');
-      const template = await fs.promises.readFile(path.resolve(distPath, 'index.html'), 'utf-8');
+      const template = await fs.promises.readFile(
+        path.resolve(distPath, 'index.html'),
+        'utf-8',
+      );
       const page = template.replace('%PRODUCTION_TAGS%', productionTags);
 
       res.status(200).set({ 'Content-Type': 'text/html' }).end(page);
@@ -97,7 +105,10 @@ export function serveStatic(app: Express) {
   });
 }
 
-function generateProductionTags(manifest: Record<string, any>, entry: string): string {
+function generateProductionTags(
+  manifest: Record<string, any>,
+  entry: string,
+): string {
   const tags: string[] = [];
   const entryChunk = manifest[entry];
 
@@ -114,7 +125,9 @@ function generateProductionTags(manifest: Record<string, any>, entry: string): s
       entryChunk.imports.forEach((imported: string) => {
         const importedChunk = manifest[imported];
         if (importedChunk) {
-          tags.push(`<link rel="modulepreload" href="/${importedChunk.file}" />`);
+          tags.push(
+            `<link rel="modulepreload" href="/${importedChunk.file}" />`,
+          );
         }
       });
     }
