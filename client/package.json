@@ -4,12 +4,12 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "start": "NODE_ENV=production node dist/index.js",
-    "check": "tsc",
-    "db:push": "drizzle-kit push",
-    "migrate": "ts-node-esm migrations/create_groups_table.ts"
+    "dev": "../node_modules/.bin/tsx server/index.ts",
+    "build": "../node_modules/.bin/vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "start": "NODE_ENV=production node ../dist/index.js",
+    "check": "../node_modules/.bin/tsc",
+    "db:push": "../node_modules/.bin/drizzle-kit push",
+    "migrate": "../node_modules/.bin/ts-node-esm migrations/create_groups_table.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
