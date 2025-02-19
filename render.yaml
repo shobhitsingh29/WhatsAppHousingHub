@@ -8,5 +8,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
     plan: free
-    staticPublishPath: ./dist
+    buildFilter:
+      paths:
+      - client/**
+      - server/**
+      - shared/**
+    staticPublishPath: /opt/render/project/src/dist
