@@ -2,7 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { setupVite, log } from "./vite";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -47,21 +47,32 @@ app.use((req, res, next) => {
 
   // Error handling middleware
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('Server Error:', err);
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-    console.error(`Error: ${message}`);
-    res.status(status).json({ message });
+    res.status(status).json({ 
+      error: true,
+      message,
+      ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+    });
   });
 
   const isProduction = process.env.NODE_ENV === "production";
 
   if (isProduction) {
     const distPath = path.join(__dirname, "..", "dist", "public");
+
     // Serve static files
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+      maxAge: '1y',
+      etag: true
+    }));
 
     // Handle client-side routing
-    app.get("*", (_req, res) => {
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith('/api')) {
+        return next();
+      }
       res.sendFile(path.join(distPath, "index.html"));
     });
   } else {
@@ -72,4 +83,7 @@ app.use((req, res, next) => {
   server.listen(PORT, "0.0.0.0", () => {
     log(`Server running in ${isProduction ? 'production' : 'development'} mode on port ${PORT}`);
   });
-})();
+})().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});

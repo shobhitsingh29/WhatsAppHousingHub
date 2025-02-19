@@ -17,14 +17,11 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "server/index.ts"
+      "dest": "/server/index.ts"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "dist/public/index.html"
+      "src": "/((?!api/.*).*)",
+      "dest": "/dist/public/index.html"
     }
   ]
 }
