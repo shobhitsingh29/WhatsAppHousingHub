@@ -3,7 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
-import { setupVite, log } from "./vite";
+import { setupVite, serveStatic, log } from "./vite";
 
 // Make fs available globally for vite.ts
 globalThis.fs = fs;
@@ -15,12 +15,13 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Logging middleware
+// Enhanced logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
+  // Capture JSON responses for logging
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
     capturedJsonResponse = bodyJson;
@@ -30,6 +31,11 @@ app.use((req, res, next) => {
   res.on('finish', () => {
     const duration = Date.now() - start;
     let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+
+    // Add details about the response type
+    const contentType = res.get('Content-Type');
+    logLine += ` [${contentType || 'no content-type'}]`;
+
     if (capturedJsonResponse) {
       logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
     }
@@ -49,24 +55,23 @@ app.use((req, res, next) => {
   const server = await registerRoutes(app);
 
   if (isProduction) {
-    const distPath = path.join(__dirname, "..", "dist", "public");
-
     // API routes should be handled before static files
     app.use('/api', (req, res, next) => {
+      log(`Processing API request: ${req.method} ${req.path}`);
       // Strip /api prefix for the actual route handlers
       req.url = req.url.replace(/^\/api/, '');
       next();
     });
 
-    // Serve static files
-    app.use(express.static(distPath, {
-      maxAge: '1y',
-      etag: true
-    }));
+    // Use the serveStatic middleware for production
+    serveStatic(app);
 
-    // SPA catch-all route - must be after API routes
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+    // Handle client-side routing by serving index.html for non-API routes
+    app.get('*', (req, res) => {
+      if (!req.path.startsWith('/api')) {
+        const indexPath = path.resolve(__dirname, '../dist/public/index.html');
+        res.sendFile(indexPath);
+      }
     });
   } else {
     await setupVite(app, server);
@@ -84,8 +89,8 @@ app.use((req, res, next) => {
     });
   });
 
-  const PORT = process.env.PORT || 9001;
-  server.listen(PORT, "0.0.0.0", () => {
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
     log(`Server running in ${isProduction ? 'production' : 'development'} mode on port ${PORT}`);
   });
 })().catch(err => {
