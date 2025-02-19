@@ -2,43 +2,58 @@
   "version": 2,
   "builds": [
     {
-      "src": "server/index.ts",
-      "use": "@vercel/node"
+      "src": "dist/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["dist/**"]
+      }
     },
     {
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist/public",
-        "buildCommand": "npm run build"
+        "distDir": "dist",
+        "buildCommand": "npm run build && node scripts/post-build.js"
       }
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "server/index.ts"
+      "dest": "/dist/index.js"
     },
     {
-      "src": "/(assets|images|fonts)/.*",
+      "src": "^/assets/(.*)",
+      "dest": "/assets/$1",
       "headers": {
         "cache-control": "public, max-age=31536000, immutable"
-      },
-      "continue": true
+      }
     },
     {
-      "src": "/(.*\\.[a-z0-9]+$)",
+      "src": "^/manifest.json",
+      "dest": "/manifest.json"
+    },
+    {
+      "src": "^/favicon.ico",
+      "dest": "/favicon.ico"
+    },
+    {
+      "src": "^/.*\\.[a-zA-Z0-9]+$",
+      "dest": "/$0",
       "headers": {
         "cache-control": "public, max-age=31536000, immutable"
-      },
-      "continue": true
+      }
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/index.html",
+      "headers": {
+        "cache-control": "public, max-age=0, must-revalidate"
+      }
     }
   ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "PORT": "5000"
   }
 }

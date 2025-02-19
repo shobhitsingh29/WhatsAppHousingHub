@@ -40,44 +40,61 @@ function generateProductionTags(manifest) {
 try {
   console.log('Starting post-build processing...');
 
-  // Create dist/public directory if it doesn't exist
-  const publicDir = path.resolve('dist/public');
-  if (!fs.existsSync(publicDir)) {
-    console.log('Creating dist/public directory...');
-    fs.mkdirSync(publicDir, { recursive: true });
+  const distDir = path.resolve('dist');
+  if (!fs.existsSync(distDir)) {
+    console.log('Creating dist directory...');
+    fs.mkdirSync(distDir, { recursive: true });
   }
 
-  // Copy all files from dist to dist/public
-  const distDir = path.resolve('dist');
-  fs.readdirSync(distDir).forEach((file) => {
-    if (file !== 'public') {
-      const srcPath = path.join(distDir, file);
-      const destPath = path.join(publicDir, file);
-      fs.copyFileSync(srcPath, destPath);
-      console.log(`Copied ${file} to public directory`);
-    }
-  });
-
-  const manifestPath = path.join(publicDir, 'manifest.json');
-  const indexPath = path.join(publicDir, 'index.html');
-
-  console.log('Reading manifest from:', manifestPath);
+  // Read and process the manifest
+  console.log('Reading manifest...');
+  const manifestPath = path.join(distDir, '.vite', 'manifest.json');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
 
-  console.log('Reading template from:', indexPath);
-  let template = fs.readFileSync(indexPath, 'utf-8');
+  // Read the template HTML
+  console.log('Reading template...');
+  const templatePath = path.join('client', 'index.html');
+  let template = fs.readFileSync(templatePath, 'utf-8');
 
+  // Replace the script tag placeholder with production tags
+  console.log('Generating production tags...');
   const productionTags = generateProductionTags(manifest);
-  template = template.replace('%PRODUCTION_TAGS%', productionTags);
+  template = template.replace('<script type="module" src="/src/main.tsx"></script>', productionTags);
 
-  console.log('Writing processed index.html to:', indexPath);
-  fs.writeFileSync(indexPath, template);
+  // Write the processed index.html
+  console.log('Writing processed index.html...');
+  fs.writeFileSync(path.join(distDir, 'index.html'), template);
+
+  // Copy the manifest to the root of dist
+  console.log('Copying manifest...');
+  fs.copyFileSync(manifestPath, path.join(distDir, 'manifest.json'));
+
+  // Copy assets folder to the root of dist
+  if (fs.existsSync(path.join(distDir, 'assets'))) {
+    console.log('Assets directory already exists in dist...');
+  } else {
+    console.log('Creating assets directory in dist...');
+    fs.mkdirSync(path.join(distDir, 'assets'), { recursive: true });
+  }
+
+  // Copy all assets to dist/assets
+  const srcAssetsDir = path.join(distDir, 'assets');
+  if (fs.existsSync(srcAssetsDir)) {
+    fs.readdirSync(srcAssetsDir).forEach((file) => {
+      if (!file.startsWith('.')) { // Skip hidden files
+        console.log(`Processing asset: ${file}`);
+        const srcPath = path.join(srcAssetsDir, file);
+        const destPath = path.join(distDir, 'assets', file);
+        fs.copyFileSync(srcPath, destPath);
+      }
+    });
+  }
 
   console.log('Post-build processing completed successfully');
 
   // Verify the processed file
-  const processedContent = fs.readFileSync(indexPath, 'utf-8');
-  if (processedContent.includes('%PRODUCTION_TAGS%')) {
+  const processedContent = fs.readFileSync(path.join(distDir, 'index.html'), 'utf-8');
+  if (processedContent.includes('<script type="module" src="/src/main.tsx"></script>')) {
     throw new Error('Template placeholder still present after processing');
   }
 
