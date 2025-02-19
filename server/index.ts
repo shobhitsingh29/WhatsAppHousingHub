@@ -69,7 +69,8 @@ app.use((req, res, next) => {
 
   if (isProduction) {
     // Serve static files from the dist directory
-    const distPath = path.resolve(__dirname, '../dist');
+    const distPath = path.join(process.cwd(), 'dist');
+    console.log('Serving static files from:', distPath);
 
     // Serve static files with proper caching headers
     app.use(express.static(distPath, {
