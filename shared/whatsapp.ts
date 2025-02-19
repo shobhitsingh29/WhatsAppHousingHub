@@ -4,6 +4,9 @@ import { z } from 'zod';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import dotenv from 'dotenv';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import pool from './db';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -97,12 +100,25 @@ export class WhatsAppIntegration {
   async joinGroup(
     inviteLink: string,
   ): Promise<{ success: boolean; message: string }> {
-    // Simply store the group information locally without API validation
-    // The group should already be joined manually through WhatsApp
-    return {
-      success: true,
-      message: 'Group registered for monitoring',
-    };
+    try {
+      const client = await pool.connect();
+      const query = `
+        INSERT INTO groups (invite_link, is_active)
+        VALUES ($1, $2)
+        RETURNING id;
+      `;
+      const values = [inviteLink, true];
+      const result = await client.query(query, values);
+      client.release();
+
+      return {
+        success: true,
+        message: `Group registered for monitoring with ID: ${result.rows[0].id}`,
+      };
+    } catch (error) {
+      console.error('Failed to join group:', error);
+      throw new WhatsAppError('Failed to join group', 'JOIN_GROUP_ERROR');
+    }
   }
 
   async leaveGroup(
