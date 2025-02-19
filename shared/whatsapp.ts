@@ -1,4 +1,12 @@
-import { z } from "zod";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { z } from 'zod';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 // Schema for WhatsApp group configuration
 export const whatsAppGroupSchema = z.object({
@@ -10,36 +18,33 @@ export const whatsAppGroupSchema = z.object({
 });
 
 export type WhatsAppGroup = z.infer<typeof whatsAppGroupSchema>;
-export type InsertWhatsAppGroup = Omit<WhatsAppGroup, "id" | "lastScraped">;
+export type InsertWhatsAppGroup = Omit<WhatsAppGroup, 'id' | 'lastScraped'>;
 
 export class WhatsAppError extends Error {
-  constructor(
-    message: string,
-    public code: string,
-  ) {
+  constructor(message: string, public code: string) {
     super(message);
-    this.name = "WhatsAppError";
+    this.name = 'WhatsAppError';
   }
 }
 
 export class WhatsAppIntegration {
   private apiKey: string;
-  private baseUrl = "https://graph.facebook.com/v19.0";
+  private baseUrl = 'https://graph.facebook.com/v19.0';
   private phoneNumberId: string;
   private businessAccountId: string;
 
   constructor(apiKey: string) {
     if (!apiKey) {
       throw new Error(
-        "WhatsApp API key is required. Please set WHATSAPP_API_KEY in Secrets.",
+        'WhatsApp API key is required. Please set WHATSAPP_API_KEY in Secrets.',
       );
     }
     this.apiKey = apiKey;
-    this.phoneNumberId = process.env.WHATSAPP_PHONE_ID || "544501202086565";
+    this.phoneNumberId = process.env.WHATSAPP_PHONE_ID || '544501202086565';
     this.businessAccountId =
-      process.env.WHATSAPP_BUSINESS_ID || "561557767042419";
+      process.env.WHATSAPP_BUSINESS_ID || '561557767042419';
     console.log(
-      "WhatsApp integration initialized with phone ID:",
+      'WhatsApp integration initialized with phone ID:',
       this.phoneNumberId,
     );
   }
@@ -48,16 +53,17 @@ export class WhatsAppIntegration {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = {
       Authorization: `Bearer ${this.apiKey}`,
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...options.headers,
     };
 
     // Add default WhatsApp messaging parameters
     if (options.method === 'POST') {
-      const body = typeof options.body === 'string' ? JSON.parse(options.body) : {};
+      const body =
+        typeof options.body === 'string' ? JSON.parse(options.body) : {};
       options.body = JSON.stringify({
-        messaging_product: "whatsapp",
-        ...body
+        messaging_product: 'whatsapp',
+        ...body,
       });
     }
 
@@ -72,7 +78,9 @@ export class WhatsAppIntegration {
       console.log('Response data:', responseData);
 
       if (!response.ok) {
-        console.error(`WhatsApp API error: ${response.status} - ${responseText}`);
+        console.error(
+          `WhatsApp API error: ${response.status} - ${responseText}`,
+        );
         throw new WhatsAppError(
           `WhatsApp API request failed: ${response.statusText}`,
           response.status.toString(),
@@ -93,7 +101,7 @@ export class WhatsAppIntegration {
     // The group should already be joined manually through WhatsApp
     return {
       success: true,
-      message: "Group registered for monitoring",
+      message: 'Group registered for monitoring',
     };
   }
 
@@ -102,7 +110,7 @@ export class WhatsAppIntegration {
   ): Promise<{ success: boolean; message: string }> {
     return {
       success: true,
-      message: "Group unregistered from monitoring",
+      message: 'Group unregistered from monitoring',
     };
   }
 
@@ -115,7 +123,7 @@ export class WhatsAppIntegration {
       );
       return [];
     } catch (error) {
-      console.error("Failed to fetch WhatsApp messages:", error);
+      console.error('Failed to fetch WhatsApp messages:', error);
       return [];
     }
   }
@@ -124,40 +132,40 @@ export class WhatsAppIntegration {
     try {
       // WhatsApp Cloud API doesn't support direct group messaging
       // We'll use webhooks to receive messages instead
-      console.log("Using webhooks to receive group messages from:", inviteLink);
+      console.log('Using webhooks to receive group messages from:', inviteLink);
       return [];
     } catch (error) {
-      console.error("Failed to fetch group messages:", error);
+      console.error('Failed to fetch group messages:', error);
       return [];
     }
   }
 
   async sendMessage(to: string, message: string): Promise<void> {
     try {
-      console.log("Sending message:", { to, message });
+      console.log('Sending message:', { to, message });
       // If it's a phone number, use it directly, otherwise try to extract group ID
-      const recipient = to.includes("+") ? to : to.split("/").pop();
+      const recipient = to.includes('+') ? to : to.split('/').pop();
 
       if (!recipient) {
-        throw new WhatsAppError("Invalid recipient", "INVALID_RECIPIENT");
+        throw new WhatsAppError('Invalid recipient', 'INVALID_RECIPIENT');
       }
 
       const response = await this.makeRequest(
         `/${this.phoneNumberId}/messages`,
         {
-          method: "POST",
+          method: 'POST',
           body: JSON.stringify({
-            messaging_product: "whatsapp",
+            messaging_product: 'whatsapp',
             to: recipient,
-            type: "text",
-            text: { body: message }
-          })
-        }
+            type: 'text',
+            text: { body: message },
+          }),
+        },
       );
 
-      console.log("WhatsApp API response:", response);
+      console.log('WhatsApp API response:', response);
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error('Error sending message:', error);
       throw error;
     }
   }
@@ -166,7 +174,7 @@ export class WhatsAppIntegration {
 // Initialize the WhatsApp client with the API key from environment
 const apiKey = process.env.WHATSAPP_API_KEY;
 if (!apiKey) {
-  throw new Error("WHATSAPP_API_KEY environment variable is required");
+  throw new Error('WHATSAPP_API_KEY environment variable is required');
 }
 
 export const whatsAppClient = new WhatsAppIntegration(apiKey);

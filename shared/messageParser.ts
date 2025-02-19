@@ -1,4 +1,4 @@
-import { InsertListing } from "./schema";
+import { InsertListing } from './schema';
 
 /**
  * Extracts structured listing data from WhatsApp messages using common patterns
@@ -26,12 +26,12 @@ export function parseWhatsAppMessage(message: string): Partial<InsertListing> {
   }
 
   // Extract property type
-  if (message.toLowerCase().includes("studio")) {
-    listing.propertyType = "studio";
-  } else if (message.toLowerCase().includes("apartment")) {
-    listing.propertyType = "apartment";
-  } else if (message.toLowerCase().includes("house")) {
-    listing.propertyType = "house";
+  if (message.toLowerCase().includes('studio')) {
+    listing.propertyType = 'studio';
+  } else if (message.toLowerCase().includes('apartment')) {
+    listing.propertyType = 'apartment';
+  } else if (message.toLowerCase().includes('house')) {
+    listing.propertyType = 'house';
   }
 
   // Extract bedrooms (e.g., "2 BHK" or "3 bedroom")
@@ -41,31 +41,33 @@ export function parseWhatsAppMessage(message: string): Partial<InsertListing> {
   }
 
   // Extract furnished status
-  listing.furnished = message.toLowerCase().includes("furnished");
+  listing.furnished = message.toLowerCase().includes('furnished');
 
   // Extract contact information
-  const contactMatch = message.match(/(?:contact|whatsapp|tel|phone):\s*([+\d\s-]+)/i);
+  const contactMatch = message.match(
+    /(?:contact|whatsapp|tel|phone):\s*([+\d\s-]+)/i,
+  );
   if (contactMatch) {
     listing.contactInfo = contactMatch[1].trim();
   }
 
   // Generate a title based on the extracted information
   const titleParts = [
-    listing.bedrooms ? `${listing.bedrooms} Bedroom` : "",
-    listing.propertyType || "Property",
-    listing.location ? `in ${listing.location}` : "",
+    listing.bedrooms ? `${listing.bedrooms} Bedroom` : '',
+    listing.propertyType || 'Property',
+    listing.location ? `in ${listing.location}` : '',
   ].filter(Boolean);
-  
-  listing.title = titleParts.join(" ");
-  
+
+  listing.title = titleParts.join(' ');
+
   // Add a generic description
   listing.description = message.trim();
 
   // Use a default image based on property type
   listing.imageUrl = `https://images.unsplash.com/photo-${
-    listing.propertyType === "studio" 
-      ? "1502672260266-1c1ef2d93688" 
-      : "1522708323590-d24dbb6b0267"
+    listing.propertyType === 'studio'
+      ? '1502672260266-1c1ef2d93688'
+      : '1522708323590-d24dbb6b0267'
   }`;
 
   return listing;
