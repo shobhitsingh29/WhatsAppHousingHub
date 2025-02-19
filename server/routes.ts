@@ -2,7 +2,6 @@ import type { Express } from 'express';
 import { createServer, type Server } from 'http';
 import { storage } from './storage';
 import { insertListingSchema } from '@shared/schema';
-import { whatsAppGroupSchema } from '@shared/whatsapp';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/listings', async (_req, res) => {
