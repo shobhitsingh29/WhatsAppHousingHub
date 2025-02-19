@@ -1,8 +1,12 @@
+import fs from 'fs';
 import express, { type Request, Response, NextFunction } from "express";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
 import { setupVite, log } from "./vite";
+
+// Make fs available globally for vite.ts
+globalThis.fs = fs;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -23,78 +27,68 @@ app.use((req, res, next) => {
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 
-  res.on("finish", () => {
+  res.on('finish', () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+    let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+    if (capturedJsonResponse) {
+      logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
     }
+
+    if (logLine.length > 80) {
+      logLine = logLine.slice(0, 79) + '…';
+    }
+
+    log(logLine);
   });
 
   next();
 });
 
 (async () => {
-  const server = await registerRoutes(app);
-
-  // Error handling middleware
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    console.error("Server Error:", err);
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({
-      error: true,
-      message,
-      ...(process.env.NODE_ENV !== "production" && { stack: err.stack }),
-    });
-  });
-
   const isProduction = process.env.NODE_ENV === "production";
+  const server = await registerRoutes(app);
 
   if (isProduction) {
     const distPath = path.join(__dirname, "..", "dist", "public");
 
-    // Serve static files
-    app.use(
-      express.static(distPath, {
-        maxAge: "1y",
-        etag: true,
-      }),
-    );
+    // API routes should be handled before static files
+    app.use('/api', (req, res, next) => {
+      // Strip /api prefix for the actual route handlers
+      req.url = req.url.replace(/^\/api/, '');
+      next();
+    });
 
-    // Handle client-side routing
-    app.get("*", (req, res, next) => {
-      if (req.path.startsWith("/api")) {
-        return next();
-      }
+    // Serve static files
+    app.use(express.static(distPath, {
+      maxAge: '1y',
+      etag: true
+    }));
+
+    // SPA catch-all route - must be after API routes
+    app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
-  }
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
   } else {
     await setupVite(app, server);
   }
 
-  // ALWAYS serve the app on port 9001
-  // this serves both the API and the client
-  const PORT = 9001;
-  server.listen(PORT, "0.0.0.0", () => {
-    log(`serving on port ${PORT}`);
+  // Error handling middleware - must be last
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('Server Error:', err);
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+    res.status(status).json({ 
+      error: true,
+      message,
+      ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+    });
   });
-})().catch((err) => {
-  console.error("Failed to start server:", err);
+
+  const PORT = process.env.PORT || 9001;
+  server.listen(PORT, "0.0.0.0", () => {
+    log(`Server running in ${isProduction ? 'production' : 'development'} mode on port ${PORT}`);
+  });
+})().catch(err => {
+  console.error('Failed to start server:', err);
   process.exit(1);
 });
